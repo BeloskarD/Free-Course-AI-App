@@ -40,7 +40,10 @@ export default function StreakPauseCard({
         setSuccess(null);
 
         try {
-            const response = await api.requestStreakPause(selectedDate, reason || 'Planned rest', token);
+            const response = await api.requestStreakPause({ 
+                date: selectedDate, 
+                reason: reason || 'Planned rest' 
+            }, token);
 
             if (response.success) {
                 setSuccess(response.message);
