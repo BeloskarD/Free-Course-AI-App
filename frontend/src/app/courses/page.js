@@ -205,38 +205,40 @@ function CoursesContent() {
     enabled: !!token,
   });
 
-  // ROBUST DATA EXTRACTION
-  const extractCourses = (data) => {
-    if (!data) return [];
-    
-    // Log data structure for debugging (viewable in browser console)
-    console.log("🔍 [Courses] Extracting from:", data);
+    // ROBUST DATA EXTRACTION
+    const extractCourses = (data) => {
+      if (!data) return [];
+      
+      // Log data structure for debugging
+      console.log("🔍 [Courses] Extracting from:", data);
 
-    if (Array.isArray(data)) return data;
-    
-    // Direct matches
-    if (data.courses && Array.isArray(data.courses)) return data.courses;
-    if (data.data && Array.isArray(data.data)) return data.data;
-
-    // Nested matches (data.data.courses)
-    if (data.data?.courses && Array.isArray(data.data.courses)) return data.data.courses;
-    
-    // Even deeper or legacy matches
-    if (data.result?.courses && Array.isArray(data.result.courses)) return data.result.courses;
-    if (data.data?.data?.courses && Array.isArray(data.data.data.courses)) return data.data.data.courses;
-
-
-    const findArray = (obj) => {
-      if (!obj || typeof obj !== 'object') return null;
-      for (const key in obj) {
-        if (Array.isArray(obj[key])) return obj[key];
-        const deep = findArray(obj[key]);
-        if (deep) return deep;
+      // 1. If it's already an array, return it
+      if (Array.isArray(data)) return data;
+      
+      // 2. Handle data.data being an array or object
+      if (data.data) {
+        if (Array.isArray(data.data)) return data.data;
+        if (data.data.courses && Array.isArray(data.data.courses)) return data.data.courses;
+        if (data.data.data && Array.isArray(data.data.data)) return data.data.data;
       }
-      return null;
+
+      // 3. Direct matches
+      if (data.courses && Array.isArray(data.courses)) return data.courses;
+      if (data.results && Array.isArray(data.results)) return data.results;
+      
+      // 4. Recursive search (Safety net)
+      const findArray = (obj, depth = 0) => {
+        if (!obj || typeof obj !== 'object' || depth > 3) return null;
+        for (const key in obj) {
+          if (Array.isArray(obj[key]) && obj[key].length > 0) return obj[key];
+          const deep = findArray(obj[key], depth + 1);
+          if (deep) return deep;
+        }
+        return null;
+      };
+      
+      return findArray(data) || [];
     };
-    return findArray(data) || [];
-  };
 
   const initialCourses = extractCourses(trendingData);
   const moreCourses = extractCourses(additionalData);
