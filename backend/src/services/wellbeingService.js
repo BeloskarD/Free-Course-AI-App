@@ -112,7 +112,17 @@ class WellbeingService {
     async requestStreakPause(userId, date, reason) {
         const profile = await this._getProfile(userId);
 
-        const pauseDate = new Date(date);
+        // Safety: Clean date if it accidentally arrived as a double-quoted string
+        let cleanDate = date;
+        if (typeof date === 'string' && date.startsWith('"') && date.endsWith('"')) {
+            try {
+                cleanDate = JSON.parse(date);
+            } catch (e) {
+                cleanDate = date.replace(/^"|"$/g, '');
+            }
+        }
+
+        const pauseDate = new Date(cleanDate);
         const currentMonth = pauseDate.getMonth();
         const pauses = profile.wellbeing?.streakPauses || [];
         const pausesThisMonth = pauses.filter(p => new Date(p.date).getMonth() === currentMonth).length;
