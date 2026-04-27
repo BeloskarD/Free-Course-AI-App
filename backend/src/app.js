@@ -53,9 +53,6 @@ if (config.sentryDsn) {
     environment: config.nodeEnv,
     tracesSampleRate: 1.0,
   });
-  
-  // RequestHandler creates a separate execution context for each request
-  app.use(Sentry.Handlers.requestHandler());
 }
 
 // ── CORE MIDDLEWARE ──
