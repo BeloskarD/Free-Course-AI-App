@@ -1,10 +1,11 @@
 services:
-  # ── WEB SERVICE (API) ──
+  # ── CONSOLIDATED SERVICE (API + Workers) ──
+  # This combined setup works on Render's Free Tier
   - type: web
     name: ai-learning-platform-backend
     env: node
     plan: free
-    region: ohio # Adjust to your preferred region
+    region: ohio
     buildCommand: npm install
     startCommand: npm start
     rootDir: backend
@@ -13,69 +14,20 @@ services:
       - key: PORT
         value: 5000
       - key: SERVICE_TYPE
-        value: web
+        value: both # Runs both Web and Workers in one process
       - key: NODE_ENV
         value: production
       - key: FRONTEND_URL
-        sync: false # Set this in Render Dashboard after Vercel deployment
+        sync: false
       - key: MONGO_URI
-        sync: false # Provide your Atlas URI in Render Dashboard
+        sync: false
       - key: JWT_SECRET
-        generateValue: true # Render will generate a random secret for you
+        generateValue: true
       - key: OPENAI_API_KEY
-        sync: false # Provide your OpenAI Key in Render Dashboard
-      - key: ANTHROPIC_API_KEY
         sync: false
-      - key: PERPLEXITY_API_KEY
-        sync: false
-      - key: GOOGLE_API_KEY
-        sync: false
-      - key: TAVILY_API_KEY
-        sync: false
-      - key: TWITTER_CLIENT_ID
-        sync: false
-      - key: TWITTER_CLIENT_SECRET
-        sync: false
+      - key: WORKER_CONCURRENCY
+        value: 1 # Lower concurrency to fit in Free Tier memory limits
       - key: SESSION_SECRET
         generateValue: true
-      - key: WORKER_CONCURRENCY
-        value: 2
-      - key: SENTRY_DSN
-        sync: false
-      - key: POSTHOG_API_KEY
-        sync: false
-
-  # ── WORKER SERVICE (Background Jobs) ──
-  - type: worker
-    name: ai-learning-platform-worker
-    env: node
-    plan: free
-    region: ohio
-    buildCommand: npm install
-    startCommand: npm start
-    rootDir: backend
-    envVars:
-      - key: SERVICE_TYPE
-        value: worker
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: 5000
-      - key: MONGO_URI
-        sync: false
-      - key: JWT_SECRET
-        sync: false # This will be shared from the web service env group or copied
-      - key: FRONTEND_URL
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: ANTHROPIC_API_KEY
-        sync: false
-      - key: PERPLEXITY_API_KEY
-        sync: false
-      - key: GOOGLE_API_KEY
-        sync: false
-      - key: TAVILY_API_KEY
-        sync: false
-      - key: WORKER_CONCURRENCY
-        value: 2
+      - key: KEEP_ALIVE_INTERVAL
+        value: 600000 # 10 minutes
