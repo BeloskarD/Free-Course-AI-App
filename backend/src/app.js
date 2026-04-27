@@ -43,6 +43,9 @@ import careerRoutes from './routes/career.routes.js';
 
 const app = express();
 
+// Trust proxy for Render/Vercel
+app.set('trust proxy', 1);
+
 /**
  * ── OBSERVIEBILITY: Sentry Initialization ──
  * Must be initialized BEFORE any other middleware
