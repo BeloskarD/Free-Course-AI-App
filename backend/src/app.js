@@ -127,7 +127,7 @@ app.use('/api', apiLimiter);
 // ── AI SPECIFIC RATE LIMITING (Cost Protection) ──
 const aiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 20, // Strict limit for AI routes
+  limit: 100, // Increased for production testing
   message: { error: 'TooManyRequests', message: 'AI processing limit reached. Please try again in 15 minutes.' },
   standardHeaders: 'draft-7',
   legacyHeaders: false,
