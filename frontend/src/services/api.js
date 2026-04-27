@@ -171,6 +171,18 @@ export const api = {
     return res.json();
   },
 
+  async changePassword(currentPassword, newPassword, token) {
+    const res = await fetch(`${API_BASE}/auth/change-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    return res.json();
+  },
+
   getBackendUrl() {
     return API_BASE.replace('/api', '');
   },

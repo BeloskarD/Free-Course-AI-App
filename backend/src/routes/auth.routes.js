@@ -2,7 +2,15 @@ import express from 'express';
 import passport from '../config/passport.js';
 import { body } from 'express-validator';
 import { validate } from '../middleware/validate.js';
-import { register, login, socialCallback, socialError, exchangeOAuthCode } from '../controllers/auth.controller.js';
+import { authenticate } from '../middleware/auth.js';
+import { 
+    register, 
+    login, 
+    socialCallback, 
+    socialError, 
+    exchangeOAuthCode,
+    changePassword 
+} from '../controllers/auth.controller.js';
 
 const router = express.Router();
 
@@ -50,6 +58,9 @@ router.get('/twitter/callback',
 
 // ─── Error route ───
 router.get('/social-error', socialError);
+
+// ─── Change Password ───
+router.post('/change-password', authenticate, changePassword);
 
 // ─── Check which providers are configured ───
 router.get('/providers', (req, res) => {

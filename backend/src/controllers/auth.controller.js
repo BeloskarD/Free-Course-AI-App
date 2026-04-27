@@ -98,3 +98,19 @@ export const socialCallback = async (req, res) => {
 export const socialError = (req, res) => {
   res.redirect(`${config.frontendUrl}/auth/callback?error=oauth_denied`);
 };
+
+// ─── Change Password Handler ───
+export const changePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ error: 'Current and new passwords are required' });
+        }
+        
+        await userService.changePassword(req.userId, currentPassword, newPassword);
+        res.json({ success: true, message: 'Password updated successfully' });
+    } catch (err) {
+        console.error('[Auth] Change password error:', err.message);
+        res.status(400).json({ error: err.message });
+    }
+};
