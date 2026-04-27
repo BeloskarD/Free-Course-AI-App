@@ -9,6 +9,7 @@ import { AuthProvider as GlobalAuthProvider } from '../context/AuthContext';
 import { NotificationProvider } from '../context/NotificationContext';
 import { GuardianProvider } from '../context/GuardianContext';
 import { QueryProviders } from '../app/lib/queryClient';
+import { Suspense } from 'react';
 import { Inter, Outfit } from 'next/font/google';
 import { PostHogProvider } from './lib/posthog';
 import PostHogPageView from './PostHogPageView';
@@ -121,7 +122,9 @@ export default function RootLayout({ children }) {
         </a>
 
         <PostHogProvider>
-          <PostHogPageView />
+          <Suspense fallback={null}>
+            <PostHogPageView />
+          </Suspense>
           <ThemeProvider>
             <GlobalAuthProvider>
               <QueryProviders>
