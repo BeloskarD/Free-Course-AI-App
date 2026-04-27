@@ -171,10 +171,7 @@ app.use('/api/interview-prep', interviewPrepRoutes);
 
 
 // ── ERROR HANDLING ──
-// Sentry error handler must be BEFORE any other error middleware
-if (config.sentryDsn) {
-  app.use(Sentry.Handlers.errorHandler());
-}
+// Sentry v10+ handles errors automatically once initialized.
 
 // ── 404 HANDLER (MUST be after all routes) ──
 app.use((req, res, next) => {
