@@ -118,7 +118,7 @@ const learnerProfileSchema = new mongoose.Schema({
             title: { type: String, required: true },
             type: {
                 type: String,
-                enum: ['course', 'quiz', 'project', 'practice', 'reading'],
+                enum: ['course', 'quiz', 'project', 'practice', 'reading', 'video course', 'tutorial', 'article', 'online course', 'video'],
                 default: 'course'
             },
             estimatedMinutes: { type: Number, default: 30 },
