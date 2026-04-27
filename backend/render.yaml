@@ -1,13 +1,13 @@
 services:
+  # ── WEB SERVICE (API) ──
   - type: web
     name: ai-learning-platform-backend
     env: node
+    plan: free
+    region: ohio # Adjust to your preferred region
     buildCommand: npm install
     startCommand: npm start
-    plan: free
-    region: oregon
-    branch: main
-    autoDeploy: true
+    rootDir: backend
     healthCheckPath: /api/health/live
     envVars:
       - key: PORT
@@ -17,131 +17,65 @@ services:
       - key: NODE_ENV
         value: production
       - key: FRONTEND_URL
-        fromDatabase:
-          name: FRONTEND_URL
-          property: value
+        sync: false # Set this in Render Dashboard after Vercel deployment
       - key: MONGO_URI
-        fromDatabase:
-          name: MONGO_URI
-          property: value
+        sync: false # Provide your Atlas URI in Render Dashboard
       - key: JWT_SECRET
-        generateValue: true
+        generateValue: true # Render will generate a random secret for you
       - key: OPENAI_API_KEY
-        fromDatabase:
-          name: OPENAI_API_KEY
-          property: value
-      - key: GROQ_API_KEY
-        fromDatabase:
-          name: GROQ_API_KEY
-          property: value
-      - key: AZURE_AI_INFERENCE_ENDPOINT
-        fromDatabase:
-          name: AZURE_AI_INFERENCE_ENDPOINT
-          property: value
-      - key: AZURE_AI_INFERENCE_KEY
-        fromDatabase:
-          name: AZURE_AI_INFERENCE_KEY
-          property: value
+        sync: false # Provide your OpenAI Key in Render Dashboard
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: PERPLEXITY_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
       - key: TAVILY_API_KEY
-        fromDatabase:
-          name: TAVILY_API_KEY
-          property: value
-      - key: SERPER_API_KEY
-        fromDatabase:
-          name: SERPER_API_KEY
-          property: value
-      - key: BYTEZ_API_KEY
-        fromDatabase:
-          name: BYTEZ_API_KEY
-          property: value
-      - key: REQUIRE_DB_ON_BOOT
-        value: "true"
-      - key: AUTH_INCLUDE_LEGACY_OAUTH_TOKEN
-        value: "false"
-      - key: RATE_LIMIT_WINDOW_MS
-        value: "900000"
-      - key: RATE_LIMIT_MAX_REQUESTS
-        value: "100"
-      - key: CACHE_TTL
-        value: "3600"
+        sync: false
+      - key: TWITTER_CLIENT_ID
+        sync: false
+      - key: TWITTER_CLIENT_SECRET
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
       - key: WORKER_CONCURRENCY
-        value: "2"
-      - key: LOG_LEVEL
-        value: "info"
+        value: 2
       - key: SENTRY_DSN
-        fromDatabase:
-          name: SENTRY_DSN
-          property: value
+        sync: false
       - key: POSTHOG_API_KEY
-        fromDatabase:
-          name: POSTHOG_API_KEY
-          property: value
-      - key: KEEP_ALIVE_INTERVAL
-        value: "600000"
+        sync: false
 
+  # ── WORKER SERVICE (Background Jobs) ──
   - type: worker
     name: ai-learning-platform-worker
     env: node
+    plan: free
+    region: ohio
     buildCommand: npm install
     startCommand: npm start
-    plan: free
-    region: oregon
-    branch: main
-    autoDeploy: true
+    rootDir: backend
     envVars:
       - key: SERVICE_TYPE
         value: worker
       - key: NODE_ENV
         value: production
-      - key: MONGO_URI
-        fromDatabase:
-          name: MONGO_URI
-          property: value
       - key: PORT
         value: 5000
+      - key: MONGO_URI
+        sync: false
       - key: JWT_SECRET
-        fromDatabase:
-          name: JWT_SECRET
-          property: value
+        sync: false # This will be shared from the web service env group or copied
       - key: FRONTEND_URL
-        fromDatabase:
-          name: FRONTEND_URL
-          property: value
+        sync: false
       - key: OPENAI_API_KEY
-        fromDatabase:
-          name: OPENAI_API_KEY
-          property: value
-      - key: GROQ_API_KEY
-        fromDatabase:
-          name: GROQ_API_KEY
-          property: value
-      - key: AZURE_AI_INFERENCE_ENDPOINT
-        fromDatabase:
-          name: AZURE_AI_INFERENCE_ENDPOINT
-          property: value
-      - key: AZURE_AI_INFERENCE_KEY
-        fromDatabase:
-          name: AZURE_AI_INFERENCE_KEY
-          property: value
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: PERPLEXITY_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
       - key: TAVILY_API_KEY
-        fromDatabase:
-          name: TAVILY_API_KEY
-          property: value
-      - key: SERPER_API_KEY
-        fromDatabase:
-          name: SERPER_API_KEY
-          property: value
-      - key: BYTEZ_API_KEY
-        fromDatabase:
-          name: BYTEZ_API_KEY
-          property: value
-      - key: REQUIRE_DB_ON_BOOT
-        value: "true"
+        sync: false
       - key: WORKER_CONCURRENCY
-        value: "2"
-      - key: LOG_LEVEL
-        value: "info"
-      - key: SENTRY_DSN
-        fromDatabase:
-          name: SENTRY_DSN
-          property: value
+        value: 2
