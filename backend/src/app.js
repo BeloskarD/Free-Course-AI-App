@@ -91,26 +91,29 @@ app.use(helmet.referrerPolicy({ policy: 'strict-origin-when-cross-origin' }));
 app.use(helmet.hidePoweredBy());
 
 // ── CORS CONFIGURATION ──
-const corsOptions = {
-  origin: (origin, callback) => {
-    const isLocalNetwork = !isProd && origin && (
-      origin.startsWith('http://192.168.') || 
-      origin.includes('.nip.io') || 
-      origin.startsWith('http://localhost') || 
-      origin.startsWith('http://127.0.0.1')
-    );
+const allowedOrigins = [
+  config.frontendUrl,
+  'https://zeeklect-ai.vercel.app',
+  'https://zeeklect.com'
+].filter(Boolean);
 
-    if (!origin || origin === config.frontendUrl || isLocalNetwork) {
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || (config.nodeEnv !== 'production' && origin.includes('nip.io'))) {
       callback(null, true);
     } else {
-      logger.warn({ origin }, '[CORS] Blocked origin');
+      console.warn(`[CORS] Blocked request from unauthorized origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
-
   },
   credentials: true,
-};
-app.use(cors(corsOptions));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Set-Cookie']
+}));
 
 // ── RATE LIMITING ──
 const apiLimiter = rateLimit({
