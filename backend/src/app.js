@@ -51,16 +51,11 @@ if (config.sentryDsn) {
   Sentry.init({
     dsn: config.sentryDsn,
     environment: config.nodeEnv,
-    integrations: [
-      new Sentry.Integrations.Http({ tracing: true }),
-    ],
     tracesSampleRate: 1.0,
   });
   
   // RequestHandler creates a separate execution context for each request
   app.use(Sentry.Handlers.requestHandler());
-  // TracingHandler creates a trace for every incoming request
-  app.use(Sentry.Handlers.tracingHandler());
 }
 
 // ── CORE MIDDLEWARE ──
