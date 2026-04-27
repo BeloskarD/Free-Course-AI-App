@@ -1,0 +1,616 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #2563eb;
+  --color-indigo-elite: #4f46e5;
+  --font-inter: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-outfit: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* 2026 EXTREME ELITE DUAL-THEME SYSTEM */
+@layer base {
+  :root {
+    color-scheme: light;
+
+    /* Extreme Elite Light - Clear Cloud & Indigo */
+    --site-bg: #f8fafb;
+    --site-text: #0f172a;
+    /* Deep Slate */
+    --site-text-muted: #475569;
+    /* Slate-600 */
+
+    --card-bg: #ffffff;
+    --card-border: rgba(15, 23, 42, 0.04);
+    --card-hover-border: rgba(79, 70, 229, 0.2);
+    /* Indigo Elite */
+
+    --accent-primary: #4f46e5;
+    /* Indigo-600 */
+    --accent-secondary: #0ea5e9;
+    /* Sky-500 */
+
+    /* Multi-Layered Elite Shadows */
+    --shadow-elite:
+      0 1px 2px rgba(15, 23, 42, 0.02),
+      0 4px 12px rgba(15, 23, 42, 0.04),
+      0 12px 24px rgba(15, 23, 42, 0.06);
+
+    --shadow-elite-hover:
+      0 4px 6px rgba(15, 23, 42, 0.02),
+      0 12px 24px rgba(15, 23, 42, 0.06),
+      0 24px 48px rgba(15, 23, 42, 0.08);
+
+    --glass-bg: rgba(255, 255, 255, 0.8);
+    --glass-border: rgba(15, 23, 42, 0.05);
+  }
+
+  .dark {
+    color-scheme: dark;
+
+    /* Extreme Elite Dark - Midnight Eclipse */
+    --site-bg: #050505;
+    /* Deepest Black */
+    --site-text: #f1f5f9;
+    /* Cloud White */
+    --site-text-muted: #94a3b8;
+    /* Slate-400 */
+
+    --card-bg: #0f0f0f;
+    --card-border: rgba(255, 255, 255, 0.03);
+    --card-hover-border: rgba(96, 165, 250, 0.2);
+
+    --accent-primary: #6366f1;
+    /* Indigo-500 */
+    --accent-secondary: #38bdf8;
+    /* Sky-400 */
+
+    /* Dark Mode Elite Glow Shadows */
+    --shadow-elite:
+      0 0 0 1px rgba(255, 255, 255, 0.03),
+      0 4px 12px rgba(0, 0, 0, 0.4);
+
+    --shadow-elite-hover:
+      0 0 0 1px rgba(255, 255, 255, 0.06),
+      0 12px 24px rgba(0, 0, 0, 0.6),
+      0 0 20px rgba(99, 102, 241, 0.1);
+
+    --glass-bg: rgba(5, 5, 5, 0.8);
+    --glass-border: rgba(255, 255, 255, 0.05);
+  }
+
+  html {
+    background-color: var(--site-bg) !important;
+    color: var(--site-text) !important;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply min-h-screen transition-all duration-500 ease-in-out;
+    background-color: var(--site-bg);
+    color: var(--site-text);
+    font-family: var(--font-outfit);
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer components {
+
+  /* State-of-the-art Glassmorphism */
+  .glass-elite {
+    backdrop-filter: blur(20px) saturate(180%);
+    background-color: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    @apply transition-all duration-300;
+  }
+
+  /* Extreme Elite Card Base */
+  .card-elite {
+    background-color: var(--card-bg);
+    border: 1px solid var(--card-border);
+    box-shadow: var(--shadow-elite);
+    @apply rounded-[2rem] transition-all duration-500 overflow-hidden;
+  }
+
+  .card-elite:hover {
+    border-color: var(--card-hover-border);
+    box-shadow: var(--shadow-elite-hover);
+    transform: translateY(-6px) scale(1.01);
+  }
+
+  /* Tactical Feedback Utility */
+  .btn-tactile {
+    @apply transition-transform duration-200 active:scale-95 cursor-pointer;
+  }
+}
+
+/* Elite Scrollbars & Smooth Scroll */
+@layer utilities {
+  .premium-scroll {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent-primary) transparent;
+  }
+
+  .premium-scroll::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .premium-scroll::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 10px;
+  }
+
+  .premium-scroll::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--accent-primary), var(--accent-secondary));
+    border-radius: 10px;
+    opacity: 0.6;
+  }
+
+  .premium-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-secondary);
+  }
+
+  /* Custom Scrollbar for Modals - Professional & Modern */
+  .custom-scrollbar {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(99, 102, 241, 0.3) transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 8px;
+    margin: 8px 0;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(99, 102, 241, 0.4), rgba(79, 70, 229, 0.3));
+    border-radius: 8px;
+    transition: background 0.3s ease;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(99, 102, 241, 0.6), rgba(79, 70, 229, 0.5));
+  }
+
+  /* Dark mode custom scrollbar */
+  .dark .custom-scrollbar {
+    scrollbar-color: rgba(129, 140, 248, 0.3) transparent;
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(129, 140, 248, 0.35), rgba(99, 102, 241, 0.25));
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(129, 140, 248, 0.5), rgba(99, 102, 241, 0.4));
+  }
+}
+
+
+/* Heading Gradients */
+.text-gradient-elite {
+  background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Animations */
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float-elite {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes pulse-soft {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.8;
+    transform: scale(0.98);
+  }
+}
+
+.animate-pulse-elite {
+  animation: pulse-soft 3s ease-in-out infinite;
+}
+
+/* ========================================
+   NAVBAR DROPDOWN & MOBILE ANIMATIONS
+   ======================================== */
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes navDropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Dropdown Panel - Solid Opaque Background (readable over scrolled content) */
+.nav-dropdown-panel {
+  backdrop-filter: blur(12px) saturate(150%);
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.07),
+    0 10px 20px -3px rgba(0, 0, 0, 0.1),
+    0 20px 40px -5px rgba(0, 0, 0, 0.08);
+}
+
+.dark .nav-dropdown-panel {
+  background-color: var(--card-bg);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 4px 6px -1px rgba(0, 0, 0, 0.4),
+    0 10px 20px -3px rgba(0, 0, 0, 0.5),
+    0 20px 40px -5px rgba(0, 0, 0, 0.4),
+    0 0 40px rgba(99, 102, 241, 0.06);
+}
+
+/* ========================================
+   LOGO ANIMATIONS - Zeeklect Branding
+   ======================================== */
+
+@keyframes logoGlow {
+
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 transparent);
+  }
+
+  50% {
+    filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.4));
+  }
+}
+
+@keyframes logoFloat {
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  25% {
+    transform: translateY(-2px) rotate(0.5deg);
+  }
+
+  50% {
+    transform: translateY(-4px) rotate(0deg);
+  }
+
+  75% {
+    transform: translateY(-2px) rotate(-0.5deg);
+  }
+}
+
+@keyframes logoPulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.02);
+    opacity: 0.95;
+  }
+}
+
+@keyframes logoShine {
+  0% {
+    background-position: -200% center;
+  }
+
+  100% {
+    background-position: 200% center;
+  }
+}
+
+/* Logo Animation Utility Classes */
+.animate-logo-glow {
+  animation: logoGlow 4s ease-in-out infinite;
+}
+
+.animate-logo-float {
+  animation: logoFloat 5s ease-in-out infinite;
+}
+
+.animate-logo-pulse {
+  animation: logoPulse 3s ease-in-out infinite;
+}
+
+.logo-shine-hover:hover {
+  background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.2) 50%,
+      transparent 100%);
+  background-size: 200% 100%;
+  animation: logoShine 1.5s ease-in-out;
+}
+
+/* Logo Responsive Container */
+.logo-responsive {
+  /* Base: 300px-400px screens */
+  width: 28px;
+  height: 28px;
+}
+
+@media (min-width: 400px) {
+  .logo-responsive {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+@media (min-width: 640px) {
+  .logo-responsive {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .logo-responsive {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .logo-responsive {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+@media (min-width: 1536px) {
+  .logo-responsive {
+    width: 52px;
+    height: 52px;
+  }
+}
+
+@media (min-width: 1800px) {
+  .logo-responsive {
+    width: 56px;
+    height: 56px;
+  }
+}
+
+/* ========================================
+   ACCESSIBILITY UTILITIES
+   ======================================== */
+
+/* Screen Reader Only - For accessibility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Focus Visible - Keyboard Navigation */
+*:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Remove default focus for mouse users, keep for keyboard */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Enhanced focus for interactive elements */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.15);
+}
+
+/* Reduced Motion - Accessibility for vestibular disorders */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-pulse,
+  .animate-bounce,
+  .animate-spin,
+  .animate-ping,
+  .animate-pulse-elite,
+  .animate-float-elite {
+    animation: none !important;
+  }
+}
+
+/* ========================================
+   MOBILE RESPONSIVENESS UTILITIES
+   ======================================== */
+
+/* Touch-friendly tap targets (minimum 44px as per WCAG) */
+@media (pointer: coarse) {
+
+  button,
+  a,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Larger touch targets for navigation */
+  nav a,
+  nav button {
+    padding: 12px 16px;
+  }
+}
+
+/* Mobile-specific improvements */
+@media (max-width: 640px) {
+
+  /* Prevent horizontal scroll */
+  body {
+    overflow-x: hidden;
+  }
+
+  /* Better text sizing on mobile */
+  html {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Smoother touch scrolling */
+  .overflow-auto,
+  .overflow-scroll,
+  .overflow-y-auto,
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Tablet optimizations */
+@media (min-width: 641px) and (max-width: 1024px) {
+
+  /* Slightly adjusted spacing for tablets */
+  .container {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --card-border: rgba(15, 23, 42, 0.2);
+  }
+
+  .dark {
+    --card-border: rgba(255, 255, 255, 0.2);
+  }
+}
+
+/* Print styles for accessibility */
+@media print {
+  * {
+    background: white !important;
+    color: black !important;
+  }
+
+  nav,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* ──────────────────────────────────────────────
+   SCROLLBAR UTILITIES (moved from inline jsx)
+   Eliminates hydration mismatch from styled-jsx
+   ────────────────────────────────────────────── */
+.comparison-scroll::-webkit-scrollbar,
+.custom-comparison-scroll::-webkit-scrollbar,
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+.comparison-scroll::-webkit-scrollbar-track,
+.custom-comparison-scroll::-webkit-scrollbar-track,
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.comparison-scroll::-webkit-scrollbar-thumb,
+.custom-comparison-scroll::-webkit-scrollbar-thumb,
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.3);
+  border-radius: 10px;
+}
+.comparison-scroll::-webkit-scrollbar-thumb:hover,
+.custom-comparison-scroll::-webkit-scrollbar-thumb:hover,
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.5);
+}
+.dark .comparison-scroll::-webkit-scrollbar-thumb,
+.dark .custom-comparison-scroll::-webkit-scrollbar-thumb,
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(129, 140, 248, 0.3);
+}
+.dark .comparison-scroll::-webkit-scrollbar-thumb:hover,
+.dark .custom-comparison-scroll::-webkit-scrollbar-thumb:hover,
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(129, 140, 248, 0.5);
+}
+
+/* ──────────────────────────────────────────────
+   GLASS PANEL (moved from wellbeing inline jsx)
+   ────────────────────────────────────────────── */
+.glass-panel {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 1.5rem;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+.glass-panel:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 20px 40px -20px rgba(99, 102, 241, 0.2);
+  transform: translateY(-2px);
+}

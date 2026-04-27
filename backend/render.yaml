@@ -1,0 +1,147 @@
+services:
+  - type: web
+    name: ai-learning-platform-backend
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    plan: free
+    region: oregon
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /api/health/live
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: SERVICE_TYPE
+        value: web
+      - key: NODE_ENV
+        value: production
+      - key: FRONTEND_URL
+        fromDatabase:
+          name: FRONTEND_URL
+          property: value
+      - key: MONGO_URI
+        fromDatabase:
+          name: MONGO_URI
+          property: value
+      - key: JWT_SECRET
+        generateValue: true
+      - key: OPENAI_API_KEY
+        fromDatabase:
+          name: OPENAI_API_KEY
+          property: value
+      - key: GROQ_API_KEY
+        fromDatabase:
+          name: GROQ_API_KEY
+          property: value
+      - key: AZURE_AI_INFERENCE_ENDPOINT
+        fromDatabase:
+          name: AZURE_AI_INFERENCE_ENDPOINT
+          property: value
+      - key: AZURE_AI_INFERENCE_KEY
+        fromDatabase:
+          name: AZURE_AI_INFERENCE_KEY
+          property: value
+      - key: TAVILY_API_KEY
+        fromDatabase:
+          name: TAVILY_API_KEY
+          property: value
+      - key: SERPER_API_KEY
+        fromDatabase:
+          name: SERPER_API_KEY
+          property: value
+      - key: BYTEZ_API_KEY
+        fromDatabase:
+          name: BYTEZ_API_KEY
+          property: value
+      - key: REQUIRE_DB_ON_BOOT
+        value: "true"
+      - key: AUTH_INCLUDE_LEGACY_OAUTH_TOKEN
+        value: "false"
+      - key: RATE_LIMIT_WINDOW_MS
+        value: "900000"
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: "100"
+      - key: CACHE_TTL
+        value: "3600"
+      - key: WORKER_CONCURRENCY
+        value: "2"
+      - key: LOG_LEVEL
+        value: "info"
+      - key: SENTRY_DSN
+        fromDatabase:
+          name: SENTRY_DSN
+          property: value
+      - key: POSTHOG_API_KEY
+        fromDatabase:
+          name: POSTHOG_API_KEY
+          property: value
+      - key: KEEP_ALIVE_INTERVAL
+        value: "600000"
+
+  - type: worker
+    name: ai-learning-platform-worker
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    plan: free
+    region: oregon
+    branch: main
+    autoDeploy: true
+    envVars:
+      - key: SERVICE_TYPE
+        value: worker
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        fromDatabase:
+          name: MONGO_URI
+          property: value
+      - key: PORT
+        value: 5000
+      - key: JWT_SECRET
+        fromDatabase:
+          name: JWT_SECRET
+          property: value
+      - key: FRONTEND_URL
+        fromDatabase:
+          name: FRONTEND_URL
+          property: value
+      - key: OPENAI_API_KEY
+        fromDatabase:
+          name: OPENAI_API_KEY
+          property: value
+      - key: GROQ_API_KEY
+        fromDatabase:
+          name: GROQ_API_KEY
+          property: value
+      - key: AZURE_AI_INFERENCE_ENDPOINT
+        fromDatabase:
+          name: AZURE_AI_INFERENCE_ENDPOINT
+          property: value
+      - key: AZURE_AI_INFERENCE_KEY
+        fromDatabase:
+          name: AZURE_AI_INFERENCE_KEY
+          property: value
+      - key: TAVILY_API_KEY
+        fromDatabase:
+          name: TAVILY_API_KEY
+          property: value
+      - key: SERPER_API_KEY
+        fromDatabase:
+          name: SERPER_API_KEY
+          property: value
+      - key: BYTEZ_API_KEY
+        fromDatabase:
+          name: BYTEZ_API_KEY
+          property: value
+      - key: REQUIRE_DB_ON_BOOT
+        value: "true"
+      - key: WORKER_CONCURRENCY
+        value: "2"
+      - key: LOG_LEVEL
+        value: "info"
+      - key: SENTRY_DSN
+        fromDatabase:
+          name: SENTRY_DSN
+          property: value

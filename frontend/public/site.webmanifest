@@ -1,0 +1,17 @@
+{
+    "name": "Zeeklect - AI Learning Platform",
+    "short_name": "Zeeklect",
+    "description": "AI-powered personalized learning platform for technology and career development",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0f0f14",
+    "theme_color": "#6366f1",
+    "icons": [
+        {
+            "src": "/zeeklect-icon.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}
