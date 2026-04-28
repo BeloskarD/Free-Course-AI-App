@@ -213,13 +213,9 @@ export default function Sidebar({ isCollapsed, setIsCollapsed, isMobileOpen, set
         {/* User / Bottom Actions */}
         <div className="p-4 border-t border-[var(--card-border)] bg-[var(--site-text)]/5">
           {user ? (
-            <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} p-2 rounded-xl border border-transparent hover:border-[var(--card-border)] hover:bg-[var(--card-bg)] transition-all cursor-pointer group`}>
-               <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 border-2 border-[var(--card-bg)] shadow-md flex items-center justify-center text-white font-bold text-sm shrink-0 uppercase overflow-hidden">
-                  {user?.avatar ? (
-                    <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-                  ) : (
-                    getInitials(user?.name, user?.email)
-                  )}
+             <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} p-2 rounded-xl border border-transparent hover:border-[var(--card-border)] hover:bg-[var(--card-bg)] transition-all cursor-pointer group`}>
+               <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[var(--accent-primary)] to-[var(--accent-secondary)] border border-white/10 shadow-lg flex items-center justify-center text-white shrink-0 group-hover:scale-105 transition-transform">
+                  <Sparkles size={18} className="animate-pulse" />
                </div>
                {(!isCollapsed || isMobileOpen) && (
                  <div className="min-w-0 flex-1 overflow-hidden animate-in fade-in slide-in-from-left-4">
@@ -227,7 +223,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed, isMobileOpen, set
                     <p className="text-[10px] font-medium text-[var(--site-text-muted)] truncate opacity-60">{user?.email}</p>
                  </div>
                )}
-            </div>
+             </div>
           ) : (
             <Link 
               href="/auth/login"
