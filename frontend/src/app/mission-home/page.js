@@ -98,15 +98,26 @@ export default function MissionHomePage() {
 
                 {/* Guardian Intervention */}
                 {intervention && intervention.priority >= 2 && (
-                    <div className="mb-8 p-6 bg-blue-500/10 dark:bg-blue-500/20 border border-blue-500/30 dark:border-blue-500/20 rounded-2xl relative overflow-hidden group">
+                    <div className="mb-8 p-6 bg-white border-2 border-blue-500 dark:bg-blue-900/20 dark:border-blue-500/30 rounded-3xl relative overflow-hidden group shadow-sm animate-in fade-in zoom-in duration-500">
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">🛰️</div>
-                        <div className="flex items-start gap-4 relative z-10">
-                            <span className="text-3xl">{intervention.message?.emoji}</span>
-                            <div className="flex-1">
-                                <h3 className="font-black text-blue-700 dark:text-blue-400 uppercase text-[10px] tracking-widest mb-1">{intervention.message?.title}</h3>
-                                <p className="text-blue-900 dark:text-blue-100 text-sm font-bold leading-relaxed">{intervention.message?.body}</p>
+                        <div className="flex items-start gap-5 relative z-10">
+                            <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-3xl shadow-inner">
+                                {intervention.message?.emoji}
                             </div>
-                            <button onClick={dismissIntervention} className="text-blue-500/50 hover:text-blue-700 dark:hover:text-blue-500 transition-colors px-2 font-black cursor-pointer">✕</button>
+                            <div className="flex-1">
+                                <h3 className="font-black text-blue-600 dark:text-blue-400 uppercase text-[10px] tracking-[0.2em] mb-1">
+                                    {intervention.message?.title}
+                                </h3>
+                                <p className="text-slate-900 dark:text-blue-50 text-sm font-bold leading-relaxed">
+                                    {intervention.message?.body}
+                                </p>
+                            </div>
+                            <button 
+                                onClick={dismissIntervention} 
+                                className="text-slate-300 hover:text-slate-600 dark:text-blue-500/50 dark:hover:text-blue-400 transition-colors px-1 text-lg font-black cursor-pointer self-start"
+                            >
+                                ✕
+                            </button>
                         </div>
                     </div>
                 )}
