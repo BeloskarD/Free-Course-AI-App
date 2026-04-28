@@ -63,9 +63,29 @@ function CoursesContent() {
     }
   };
 
-  const [searchQuery, setSearchQuery] = useState(urlQuery || "");
-  const [activeSearch, setActiveSearch] = useState(urlQuery || "");
-  const [showSearchBar, setShowSearchBar] = useState(!!urlQuery);
+  const [searchQuery, setSearchQuery] = useState(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get("q") || localStorage.getItem("coursesSearchQuery") || "";
+    }
+    return "";
+  });
+
+  const [activeSearch, setActiveSearch] = useState(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get("q") || localStorage.getItem("coursesSearchQuery") || "";
+    }
+    return "";
+  });
+
+  const [showSearchBar, setShowSearchBar] = useState(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      return !!urlParams.get("q") || localStorage.getItem("coursesShowSearchBar") === "true";
+    }
+    return false;
+  });
 
   // Restore search state from localStorage on mount if URL is empty
   useEffect(() => {
@@ -97,7 +117,7 @@ function CoursesContent() {
       localStorage.setItem("coursesSearchQuery", urlQuery);
       localStorage.setItem("coursesShowSearchBar", "true");
     }
-  }, [isMounted, urlQuery]);
+  }, [isMounted, urlQuery, activeSearch]);
 
   // Fetch user profile to get skills/goals for personalized default search
   const { data: profileData, isLoading: profileLoading } = useQuery({

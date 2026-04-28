@@ -98,15 +98,15 @@ export default function MissionHomePage() {
 
                 {/* Guardian Intervention */}
                 {intervention && intervention.priority >= 2 && (
-                    <div className="mb-8 p-6 bg-blue-500/10 border border-blue-500/20 rounded-2xl relative overflow-hidden group">
+                    <div className="mb-8 p-6 bg-blue-500/10 dark:bg-blue-500/20 border border-blue-500/20 rounded-2xl relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">🛰️</div>
                         <div className="flex items-start gap-4 relative z-10">
                             <span className="text-3xl">{intervention.message?.emoji}</span>
                             <div className="flex-1">
-                                <h3 className="font-black text-blue-400 uppercase text-xs tracking-widest mb-1">{intervention.message?.title}</h3>
-                                <p className="text-blue-200/80 text-sm font-medium">{intervention.message?.body}</p>
+                                <h3 className="font-black text-blue-600 dark:text-blue-400 uppercase text-xs tracking-widest mb-1">{intervention.message?.title}</h3>
+                                <p className="text-blue-800/80 dark:text-blue-200/80 text-sm font-medium">{intervention.message?.body}</p>
                             </div>
-                            <button onClick={dismissIntervention} className="text-blue-500/50 hover:text-blue-500 transition-colors px-2 font-black">✕</button>
+                            <button onClick={dismissIntervention} className="text-blue-500/50 hover:text-blue-500 transition-colors px-2 font-black cursor-pointer">✕</button>
                         </div>
                     </div>
                 )}
@@ -250,10 +250,13 @@ export default function MissionHomePage() {
                                                         </p>
                                                     </div>
                                                     <button 
-                                                        onClick={() => mission._id ? handleStartMission(mission._id, mission.skill) : router.push('/courses')}
+                                                        onClick={() => {
+                                                            const query = mission.skill || mission.title;
+                                                            router.push(`/courses?q=${encodeURIComponent(query)}`);
+                                                        }}
                                                         className="w-full sm:w-auto mt-4 sm:mt-0 px-10 py-4 rounded-2xl bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:scale-105 transition-all btn-tactile"
                                                     >
-                                                        {mission._id ? 'Start Learning →' : 'Explore Courses →'}
+                                                        Explore Courses →
                                                     </button>
                                                 </div>
                                             </div>
