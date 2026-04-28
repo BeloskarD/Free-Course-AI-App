@@ -133,16 +133,13 @@ export default function Sidebar({ isCollapsed, setIsCollapsed, isMobileOpen, set
         `}
       >
         {/* Logo Section */}
-        <div className="h-16 flex items-center px-6 border-b border-[var(--card-border)] overflow-hidden">
-          <Link href="/mission-home" className="flex items-center gap-3 shrink-0">
-             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-secondary)] flex items-center justify-center text-white shrink-0">
-                <Sparkles size={18} />
-             </div>
-             {!isCollapsed && (
-               <span className="text-xl font-black tracking-tighter text-[var(--site-text)] animate-in fade-in slide-in-from-left-4 duration-500">
-                 ZEEKLECT <span className="text-[var(--accent-primary)]">OS</span>
-               </span>
-             )}
+        <div className="h-16 flex items-center px-4 border-b border-[var(--card-border)] overflow-hidden">
+          <Link href="/mission-home" className="flex items-center h-full">
+             <img 
+               src="/zeeklect-logo.png" 
+               alt="Zeeklect" 
+               className={`h-11 w-auto object-contain transition-all duration-500 ${isCollapsed && !isMobileOpen ? 'scale-[1.8] mx-auto' : 'scale-[1.85] ml-8 origin-left'}`}
+             />
           </Link>
         </div>
 
@@ -214,8 +211,8 @@ export default function Sidebar({ isCollapsed, setIsCollapsed, isMobileOpen, set
         <div className="p-4 border-t border-[var(--card-border)] bg-[var(--site-text)]/5">
           {user ? (
              <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} p-2 rounded-xl border border-transparent hover:border-[var(--card-border)] hover:bg-[var(--card-bg)] transition-all cursor-pointer group`}>
-               <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[var(--accent-primary)] to-[var(--accent-secondary)] border border-white/10 shadow-lg flex items-center justify-center text-white shrink-0 group-hover:scale-105 transition-transform">
-                  <Sparkles size={18} className="animate-pulse" />
+               <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-all duration-500 overflow-hidden">
+                  <img src="/zeeklect-icon.png" alt="Zeeklect" className="w-full h-full object-contain" />
                </div>
                {(!isCollapsed || isMobileOpen) && (
                  <div className="min-w-0 flex-1 overflow-hidden animate-in fade-in slide-in-from-left-4">
