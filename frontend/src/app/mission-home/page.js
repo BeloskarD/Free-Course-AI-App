@@ -98,23 +98,25 @@ export default function MissionHomePage() {
 
                 {/* Guardian Intervention */}
                 {intervention && intervention.priority >= 2 && (
-                    <div className="mb-8 p-6 bg-white border-2 border-blue-500 dark:bg-blue-900/20 dark:border-blue-500/30 rounded-3xl relative overflow-hidden group shadow-sm animate-in fade-in zoom-in duration-500">
-                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">🛰️</div>
-                        <div className="flex items-start gap-5 relative z-10">
-                            <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-3xl shadow-inner">
-                                {intervention.message?.emoji}
+                    <div className="mb-10 p-7 bg-gradient-to-br from-white to-indigo-50/30 border border-indigo-100/50 rounded-[2.5rem] relative overflow-hidden group shadow-sm dark:from-slate-900 dark:to-indigo-900/10 dark:border-indigo-900/30 animate-in fade-in slide-in-from-top-4 duration-700">
+                        <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.07] group-hover:scale-125 transition-all duration-1000 text-6xl pointer-events-none">🛰️</div>
+                        <div className="flex items-start gap-7 relative z-10">
+                            <div className="w-16 h-16 rounded-3xl bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-900/30 flex items-center justify-center text-4xl shadow-sm group-hover:shadow-md group-hover:-rotate-3 transition-all duration-500 shrink-0">
+                                {intervention.message?.emoji || '🛡️'}
                             </div>
-                            <div className="flex-1">
-                                <h3 className="font-black text-blue-600 dark:text-blue-400 uppercase text-[10px] tracking-[0.2em] mb-1">
+                            <div className="flex-1 pt-1.5">
+                                <h3 className="font-black text-indigo-600 dark:text-indigo-400 uppercase text-[10px] tracking-[0.4em] mb-2.5 flex items-center gap-2.5">
+                                    <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse shadow-[0_0_8px_rgba(79,70,229,0.5)]" />
                                     {intervention.message?.title}
                                 </h3>
-                                <p className="text-slate-900 dark:text-blue-50 text-sm font-bold leading-relaxed">
+                                <p className="text-slate-900 dark:text-slate-100 text-base font-bold leading-relaxed max-w-[95%] tracking-tight">
                                     {intervention.message?.body}
                                 </p>
                             </div>
                             <button 
                                 onClick={dismissIntervention} 
-                                className="text-slate-300 hover:text-slate-600 dark:text-blue-500/50 dark:hover:text-blue-400 transition-colors px-1 text-lg font-black cursor-pointer self-start"
+                                className="w-11 h-11 rounded-2xl hover:bg-white dark:hover:bg-slate-800 text-slate-300 hover:text-slate-600 dark:text-slate-600 dark:hover:text-slate-300 transition-all flex items-center justify-center font-black cursor-pointer self-start shadow-sm border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900/50"
+                                title="Dismiss Alert"
                             >
                                 ✕
                             </button>
