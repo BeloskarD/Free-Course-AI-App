@@ -627,30 +627,69 @@ export async function getMissionWithProgress(missionId, userId) {
 export async function getRecommendedMissions(userId, limit = 5) {
     const pkg = await pkgService.getPKG(userId);
 
-    // Get skills that need work (Array-compatible)
+    // 1. Collect target criteria
     const skillsArr = Array.isArray(pkg.skills) ? pkg.skills : [];
+    
+    // Gap Skills (Highest priority)
+    const gapSkills = (pkg.career?.gapSkills || []).map(g => g.skill.toLowerCase());
+    
+    // Weak Skills (< 70% health)
     const weakSkills = skillsArr
         .filter(s => (s.health || 100) < 70)
         .map(s => s.skillId || s.displayName || 'unknown');
 
-    // Get gap skills
-    const gapSkills = (pkg.career?.gapSkills || []).map(g => g.skill.toLowerCase());
+    // Target Role (Dashboard priority)
+    const targetRole = pkg.career?.targetRole;
 
-    const targetSkills = [...new Set([...weakSkills, ...gapSkills])];
+    // Filter out already completed mission IDs
+    const completedIds = pkg.missions?.completed?.map(id => id.toString()) || [];
 
-    // Find missions
-    let missions = await Mission.find({
-        $or: [
-            { skill: { $in: targetSkills } },
-            { isPublic: true }
-        ]
-    }).limit(limit);
+    // 2. Fetch missions in priority order
+    let recommendedMissions = [];
 
-    // Filter out already completed
-    const completedIds = pkg.missions.completed.map(id => id.toString());
-    missions = missions.filter(m => !completedIds.includes(m._id.toString()));
+    // Priority 1: Missions matching Gap Skills
+    if (gapSkills.length > 0) {
+        const gapMissions = await Mission.find({
+            skill: { $in: gapSkills },
+            _id: { $nin: completedIds },
+            isPublic: true
+        }).limit(limit);
+        recommendedMissions.push(...gapMissions);
+    }
 
-    return missions;
+    // Priority 2: Missions matching Weak Skills (if we need more)
+    if (recommendedMissions.length < limit && weakSkills.length > 0) {
+        const weakMissions = await Mission.find({
+            skill: { $in: weakSkills },
+            _id: { $nin: [...completedIds, ...recommendedMissions.map(m => m._id)] },
+            isPublic: true
+        }).limit(limit - recommendedMissions.length);
+        recommendedMissions.push(...weakMissions);
+    }
+
+    // Priority 3: Missions matching Target Role (Regex search on title/skill)
+    if (recommendedMissions.length < limit && targetRole) {
+        const roleMissions = await Mission.find({
+            $or: [
+                { title: { $regex: targetRole, $options: 'i' } },
+                { skill: { $regex: targetRole, $options: 'i' } }
+            ],
+            _id: { $nin: [...completedIds, ...recommendedMissions.map(m => m._id)] },
+            isPublic: true
+        }).limit(limit - recommendedMissions.length);
+        recommendedMissions.push(...roleMissions);
+    }
+
+    // Priority 4: General Public Missions (Fallback)
+    if (recommendedMissions.length < limit) {
+        const fallbackMissions = await Mission.find({
+            isPublic: true,
+            _id: { $nin: [...completedIds, ...recommendedMissions.map(m => m._id)] }
+        }).limit(limit - recommendedMissions.length);
+        recommendedMissions.push(...fallbackMissions);
+    }
+
+    return recommendedMissions.slice(0, limit);
 }
 
 // ========================================

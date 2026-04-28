@@ -7,7 +7,7 @@
  * Only one active mission per skill (UI enforcement).
  */
 
-import { useMissions, useRecommendedMissions, useStartMission } from '../lib/hooks';
+import { useMissions, useRecommendedMissions, useStartMission, usePKGSummary } from '../lib/hooks';
 import { useAuth } from '../../context/AuthContext';
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -22,6 +22,7 @@ function MissionsListContent() {
 
     const { data: missionsData, isLoading } = useMissions();
     const { data: recommendedData, isLoading: loadingRecommended } = useRecommendedMissions();
+    const { data: pkgSummary } = usePKGSummary();
     const startMutation = useStartMission();
 
     const [showCompletedSection, setShowCompletedSection] = useState(showCompleted === 'true');
@@ -138,10 +139,10 @@ function MissionsListContent() {
 
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
                             <Link
-                                href="/courses"
+                                href={`/courses${pkgSummary?.career?.targetRole ? `?q=${encodeURIComponent(pkgSummary.career.targetRole)}` : ''}`}
                                 className="inline-flex items-center justify-center px-10 py-4 rounded-2xl bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-white font-black uppercase tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
                             >
-                                🗺️ Explore Courses
+                                🗺️ Explore {pkgSummary?.career?.targetRole || 'Courses'}
                             </Link>
                             <Link
                                 href="/ai-intelligence"
@@ -226,10 +227,13 @@ function MissionsListContent() {
                                                         </p>
                                                     </div>
                                                     <button 
-                                                        onClick={() => mission._id ? handleStartMission(mission._id, mission.skill) : router.push('/courses')}
+                                                        onClick={() => {
+                                                            const query = mission.skill || mission.title;
+                                                            router.push(`/courses?q=${encodeURIComponent(query)}`);
+                                                        }}
                                                         className="w-full sm:w-auto mt-6 sm:mt-0 px-12 py-5 rounded-2xl bg-gradient-to-r from-[var(--accent-primary)] via-[var(--accent-secondary)] to-[var(--accent-primary)] bg-[length:200%_auto] animate-gradient-half text-white text-[11px] font-black uppercase tracking-[0.3em] shadow-2xl hover:shadow-[var(--accent-primary)]/40 hover:scale-105 active:scale-95 transition-all duration-500 btn-tactile"
                                                     >
-                                                        {mission._id ? 'Start Learning →' : 'Explore Courses →'}
+                                                        Explore Content →
                                                     </button>
                                                 </div>
                                             </div>
@@ -268,7 +272,7 @@ function MissionsListContent() {
                                 <RecommendedMissionCard
                                     key={mission._id}
                                     mission={mission}
-                                    onStart={() => handleStartMission(mission._id, mission.skill)}
+                                    onStart={() => router.push(`/courses?q=${encodeURIComponent(mission.skill || mission.title)}`)}
                                     isStarting={startMutation.isPending}
                                     alreadyActive={activeSkills.has(mission.skill?.toLowerCase())}
                                 />
@@ -432,7 +436,7 @@ function RecommendedMissionCard({ mission, onStart, isStarting, alreadyActive })
                     disabled={isStarting}
                     className="w-full sm:w-auto px-6 py-3 rounded-lg text-[9px] font-black uppercase tracking-widest bg-blue-600 text-white shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
                 >
-                    {isStarting ? '...' : 'Start learning →'}
+                    Explore Courses →
                 </button>
             )}
         </div>
