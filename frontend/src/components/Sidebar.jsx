@@ -211,8 +211,12 @@ export default function Sidebar({ isCollapsed, setIsCollapsed, isMobileOpen, set
         <div className="p-4 border-t border-[var(--card-border)] bg-[var(--site-text)]/5">
           {user ? (
              <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} p-2 rounded-xl border border-transparent hover:border-[var(--card-border)] hover:bg-[var(--card-bg)] transition-all cursor-pointer group`}>
-               <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-all duration-500 overflow-hidden">
-                  <img src="/zeeklect-icon.png" alt="Zeeklect" className="w-full h-full object-contain" />
+               <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 border-2 border-[var(--card-bg)] shadow-lg flex items-center justify-center text-white font-bold text-sm shrink-0 uppercase overflow-hidden transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
+                  {user?.avatar ? (
+                    <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                  ) : (
+                    getInitials(user?.name, user?.email)
+                  )}
                </div>
                {(!isCollapsed || isMobileOpen) && (
                  <div className="min-w-0 flex-1 overflow-hidden animate-in fade-in slide-in-from-left-4">
