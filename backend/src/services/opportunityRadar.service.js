@@ -26,6 +26,10 @@ function getCachedSignals() {
 const matchCache = new Map();
 const MATCH_CACHE_TTL = 2 * 60 * 60 * 1000;
 
+export function invalidateMatchCache(userId) {
+    matchCache.delete(`${userId}_radar`);
+}
+
 /**
  * Calculate match score between a signal and user PKG.
  */
@@ -213,7 +217,7 @@ async function getRadar(userId, limit = 10) {
 
     if (!userHasSkills) {
         console.log(`[OpportunityRadar] User ${userId} has no skills — returning empty radar`);
-        matchCache.set(cacheKey, { time: Date.now(), data: [] });
+        // Do not cache empty radar so it can update immediately when skills are added
         return [];
     }
 

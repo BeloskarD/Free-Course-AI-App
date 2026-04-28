@@ -46,6 +46,7 @@ export const syncSkill = async (userId, skillName, levelOrProgress, options = {}
         }
         
         // Find if skill already exists in profile
+        if (!profile.masteredSkills) profile.masteredSkills = [];
         const profileSkillIndex = profile.masteredSkills.findIndex(
             s => s.name.toLowerCase() === skillName.trim().toLowerCase()
         );

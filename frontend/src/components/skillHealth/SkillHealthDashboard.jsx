@@ -56,7 +56,7 @@ export default function SkillHealthDashboard() {
         },
         enabled: !!token && !!user,
         staleTime: 1000 * 60 * 5, // 5 minutes cache
-        refetchOnWindowFocus: false
+        refetchOnWindowFocus: true
     });
 
     // Fetch notifications

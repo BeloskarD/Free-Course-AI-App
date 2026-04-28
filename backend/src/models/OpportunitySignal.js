@@ -12,7 +12,7 @@ const opportunitySignalSchema = new mongoose.Schema({
     signalId: { type: String, required: true, unique: true, index: true },
     source: {
         type: String,
-        enum: ['github_trending', 'hiring_signal', 'research_trend', 'creator_ecosystem', 'industry_report'],
+        default: 'industry_report',
         required: true
     },
 

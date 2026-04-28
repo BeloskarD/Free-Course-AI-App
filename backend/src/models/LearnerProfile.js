@@ -62,7 +62,6 @@ const learnerProfileSchema = new mongoose.Schema({
             streak: { type: Number, default: 0 },           // consecutive days maintained
             status: {
                 type: String,
-                enum: ['healthy', 'warning', 'critical', 'dormant'],
                 default: 'healthy'
             }
         },
@@ -70,7 +69,7 @@ const learnerProfileSchema = new mongoose.Schema({
         // 🎯 Challenge History
         challenges: [{
             date: { type: Date, default: Date.now },
-            type: { type: String, enum: ['quiz', 'code', 'explain'] },
+            type: { type: String },
             score: { type: Number, min: 0, max: 100 },
             timeSpent: { type: Number, default: 0 }         // seconds
         }],
@@ -81,7 +80,6 @@ const learnerProfileSchema = new mongoose.Schema({
             verifiedAt: { type: Date },
             badgeLevel: {
                 type: String,
-                enum: ['bronze', 'silver', 'gold', 'platinum'],
                 default: null
             },
             sustainedDays: { type: Number, default: 0 }     // days above 80% health
@@ -90,7 +88,6 @@ const learnerProfileSchema = new mongoose.Schema({
         // Existing fields
         confidence: {
             type: String,
-            enum: ['low', 'medium', 'high'],
             default: 'low'
         },
         lastPracticed: { type: Date },
@@ -102,7 +99,6 @@ const learnerProfileSchema = new mongoose.Schema({
         current: { type: Number, default: 0 },               // hours/week
         trend: {
             type: String,
-            enum: ['accelerating', 'stable', 'slowing'],
             default: 'stable'
         },
         weeklyTarget: { type: Number, default: 5 },          // hours
@@ -118,7 +114,6 @@ const learnerProfileSchema = new mongoose.Schema({
             title: { type: String, required: true },
             type: {
                 type: String,
-                enum: ['course', 'quiz', 'project', 'practice', 'reading', 'video course', 'tutorial', 'article', 'online course', 'video'],
                 default: 'course'
             },
             estimatedMinutes: { type: Number, default: 30 },
@@ -130,7 +125,6 @@ const learnerProfileSchema = new mongoose.Schema({
             missionId: { type: String },           // Linked Phase 4 Mission ID
             status: {
                 type: String,
-                enum: ['pending', 'in_progress', 'completed', 'skipped'],
                 default: 'pending'
             },
             completedAt: { type: Date },

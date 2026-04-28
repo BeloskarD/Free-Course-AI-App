@@ -25,7 +25,7 @@ const userProgressSchema = new mongoose.Schema({
 
   activityLog: [{
     date: { type: Date, required: true },
-    type: { type: String, enum: ['course_completed', 'skill_practiced', 'achievement_unlocked'] },
+    type: { type: String },
     count: { type: Number, default: 1 },
   }],
 

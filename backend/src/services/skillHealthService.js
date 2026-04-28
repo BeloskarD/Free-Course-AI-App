@@ -36,12 +36,36 @@ class SkillHealthService {
     }
 
     async recalculateHealth(userId) {
-        const profile = await learnerProfileRepository.findByUserId(userId);
+        let profile = await learnerProfileRepository.findByUserId(userId);
         if (!profile) {
             return { success: true, updated: 0 };
         }
 
-        const normalizedSkills = this._normalizeSkills(profile.masteredSkills || []);
+        // --- NEW: Self-Healing Sync from PKG (Source of Truth) ---
+        // This ensures that if syncSkill failed in the past, we can recover missing skills.
+        const pkg = await (await import('./pkgService.js')).default.getPKG(userId);
+        const pkgSkills = Array.isArray(pkg.skills) ? pkg.skills : [];
+        
+        const existingSkills = [...(profile.masteredSkills || [])];
+        const existingNames = new Set(existingSkills.map(s => s.name.toLowerCase().trim()));
+        
+        let addedCount = 0;
+        for (const pkgSkill of pkgSkills) {
+            const displayName = pkgSkill.displayName || pkgSkill.skillId;
+            if (displayName && !existingNames.has(displayName.toLowerCase().trim())) {
+                existingSkills.push({
+                    name: displayName,
+                    level: pkgSkill.level || 10,
+                    health: { score: 100, lastAssessed: new Date(), status: 'healthy' },
+                    lastPracticed: new Date(),
+                    confidence: 'medium'
+                });
+                addedCount++;
+                console.log(`[SkillHealth] Restored missing skill from PKG during recalculate: ${displayName}`);
+            }
+        }
+
+        const normalizedSkills = this._normalizeSkills(existingSkills);
         const now = new Date();
 
         const updatedSkills = normalizedSkills.map((skill) => {
@@ -67,8 +91,8 @@ class SkillHealthService {
             };
         });
 
-        await learnerProfileRepository.update(profile.id, { masteredSkills: updatedSkills });
-        return { success: true, updated: updatedSkills.length };
+        await learnerProfileRepository.update(profile.id || profile._id, { masteredSkills: updatedSkills });
+        return { success: true, updated: updatedSkills.length, restored: addedCount };
     }
 
     async getChallenges(userId, skillName) {
