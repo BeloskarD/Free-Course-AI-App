@@ -12,15 +12,15 @@ import { useState, useMemo, useRef, useEffect } from "react";
 
 // ── Cluster Colors ──
 const CLUSTER_COLORS = {
-    frontend: { bg: 'from-blue-500 to-indigo-600', ring: 'border-blue-500/30', text: 'text-blue-500', light: 'bg-blue-500/10' },
-    backend: { bg: 'from-emerald-500 to-teal-600', ring: 'border-emerald-500/30', text: 'text-emerald-500', light: 'bg-emerald-500/10' },
-    database: { bg: 'from-purple-500 to-violet-600', ring: 'border-purple-500/30', text: 'text-purple-500', light: 'bg-purple-500/10' },
-    devops: { bg: 'from-orange-500 to-red-600', ring: 'border-orange-500/30', text: 'text-orange-500', light: 'bg-orange-500/10' },
-    ai_ml: { bg: 'from-pink-500 to-rose-600', ring: 'border-pink-500/30', text: 'text-pink-500', light: 'bg-pink-500/10' },
-    mobile: { bg: 'from-cyan-500 to-sky-600', ring: 'border-cyan-500/30', text: 'text-cyan-500', light: 'bg-cyan-500/10' },
-    security: { bg: 'from-red-500 to-rose-600', ring: 'border-red-500/30', text: 'text-red-500', light: 'bg-red-500/10' },
-    data: { bg: 'from-amber-500 to-yellow-600', ring: 'border-amber-500/30', text: 'text-amber-500', light: 'bg-amber-500/10' },
-    general: { bg: 'from-slate-500 to-gray-600', ring: 'border-slate-500/30', text: 'text-slate-500', light: 'bg-slate-500/10' },
+    frontend: { bg: 'from-blue-500 to-indigo-600', ring: 'border-blue-500/20', text: 'text-blue-500', light: 'bg-blue-500/10', glow: 'shadow-blue-500/20' },
+    backend: { bg: 'from-emerald-500 to-teal-600', ring: 'border-emerald-500/20', text: 'text-emerald-500', light: 'bg-emerald-500/10', glow: 'shadow-emerald-500/20' },
+    database: { bg: 'from-purple-500 to-violet-600', ring: 'border-purple-500/20', text: 'text-purple-500', light: 'bg-purple-500/10', glow: 'shadow-purple-500/20' },
+    devops: { bg: 'from-orange-500 to-red-600', ring: 'border-orange-500/20', text: 'text-orange-500', light: 'bg-orange-500/10', glow: 'shadow-orange-500/20' },
+    ai_ml: { bg: 'from-pink-500 to-rose-600', ring: 'border-pink-500/20', text: 'text-pink-500', light: 'bg-pink-500/10', glow: 'shadow-pink-500/20' },
+    mobile: { bg: 'from-cyan-500 to-sky-600', ring: 'border-cyan-500/20', text: 'text-cyan-500', light: 'bg-cyan-500/10', glow: 'shadow-cyan-500/20' },
+    security: { bg: 'from-red-500 to-rose-600', ring: 'border-red-500/20', text: 'text-red-500', light: 'bg-red-500/10', glow: 'shadow-red-500/20' },
+    data: { bg: 'from-amber-500 to-yellow-600', ring: 'border-amber-500/20', text: 'text-amber-500', light: 'bg-amber-500/10', glow: 'shadow-amber-500/20' },
+    general: { bg: 'from-slate-500 to-gray-600', ring: 'border-slate-500/20', text: 'text-slate-500', light: 'bg-slate-500/10', glow: 'shadow-slate-500/20' },
 };
 
 function getClusterStyle(cluster) {
@@ -38,7 +38,11 @@ function SkillDetailCard({ node, onSelect }) {
     const entropyColor = node.entropyRate > 0.7 ? 'text-red-500 bg-red-500/10' : node.entropyRate > 0.4 ? 'text-amber-500 bg-amber-500/10' : 'text-emerald-500 bg-emerald-500/10';
 
     return (
-        <div onClick={() => onSelect?.(node)} className={`group cursor-pointer p-4 sm:p-5 rounded-2xl bg-[var(--card-bg)] border-2 ${style.ring} hover:border-[var(--card-hover-border)] transition-all duration-300 hover:shadow-[var(--shadow-elite-hover)] hover:-translate-y-1`}>
+        <div 
+            onClick={() => onSelect?.(node)} 
+            className={`group cursor-pointer p-5 rounded-[2.5rem] bg-[var(--card-bg)] border border-[var(--card-border)] hover:border-[var(--accent-primary)]/30 transition-all duration-500 hover:shadow-[var(--shadow-elite-hover)] hover:-translate-y-1 relative overflow-hidden`}
+        >
+            <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${style.bg} opacity-0 group-hover:opacity-[0.03] transition-opacity duration-700 blur-3xl`} />
             {/* Header */}
             <div className="flex items-start justify-between mb-3 gap-2">
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -234,17 +238,21 @@ export default function SkillGraphPage() {
     if (isLoading) {
         return (
             <div className="min-h-screen bg-[var(--site-bg)] flex items-center justify-center">
-                <div className="text-center animate-in fade-in zoom-in duration-700">
-                    <div className="relative w-32 h-32 mx-auto mb-8">
-                        <div className="absolute inset-0 bg-indigo-500/10 rounded-[2rem] blur-2xl" />
-                        <div className="relative w-full h-full rounded-[2.5rem] bg-gradient-to-br from-[var(--card-bg)] to-[var(--site-bg)] border border-[var(--card-border)] flex items-center justify-center shadow-2xl">
-                            <Brain size={60} className="text-indigo-500 animate-bounce" strokeWidth={1.5} />
+                <div className="text-center animate-in fade-in zoom-in duration-1000">
+                    <div className="relative w-40 h-40 mx-auto mb-10">
+                        <div className="absolute inset-0 bg-indigo-500/15 rounded-[3rem] blur-3xl animate-pulse" />
+                        <div className="relative w-full h-full rounded-[3.5rem] bg-[var(--card-bg)] border border-[var(--card-border)] flex items-center justify-center shadow-2xl overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent animate-pulse-elite" />
+                            <Brain size={64} className="text-indigo-500 relative z-10" strokeWidth={1.5} />
                         </div>
+                        {/* Orbiting particles */}
+                        <div className="absolute -top-2 -right-2 w-4 h-4 bg-purple-500 rounded-full blur-sm animate-ping" />
+                        <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-indigo-500 rounded-full blur-sm animate-ping delay-700" />
                     </div>
-                    <h3 className="text-2xl sm:text-3xl font-black text-[var(--site-text)] tracking-tighter mb-2">
-                        Mapping <span className="text-indigo-500">Your Brain...</span>
+                    <h3 className="text-3xl sm:text-4xl font-black text-[var(--site-text)] tracking-tighter mb-3">
+                        Mapping <span className="text-gradient-elite">Cognitive Graph</span>
                     </h3>
-                    <p className="text-sm font-black text-[var(--site-text-muted)] uppercase tracking-[0.4em] opacity-40">Building Cognitive Graph</p>
+                    <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.6em] opacity-60">Initializing Neural Assets</p>
                 </div>
             </div>
         );

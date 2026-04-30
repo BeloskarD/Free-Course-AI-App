@@ -9,6 +9,7 @@ import missionRepository from './mongoose/MissionRepository.js';
 import userProgressRepository from './mongoose/UserProgressRepository.js';
 import achievementRepository from './mongoose/AchievementRepository.js';
 import learnerProfileRepository from './mongoose/LearnerProfileRepository.js';
+import roleTaxonomyRepository from './mongoose/RoleTaxonomyRepository.js';
 
 export {
     userRepository,
@@ -16,7 +17,8 @@ export {
     missionRepository,
     userProgressRepository,
     achievementRepository,
-    learnerProfileRepository
+    learnerProfileRepository,
+    roleTaxonomyRepository
 };
 
 export default {
@@ -25,5 +27,6 @@ export default {
     missionRepository,
     userProgressRepository,
     achievementRepository,
-    learnerProfileRepository
+    learnerProfileRepository,
+    roleTaxonomyRepository
 };

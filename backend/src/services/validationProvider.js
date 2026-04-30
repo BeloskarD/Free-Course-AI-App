@@ -1,4 +1,6 @@
 import logger from '../utils/logger.js';
+import pkgService from './pkgService.js';
+import missionService from './mission.service.js';
 import SkillValidation from '../models/SkillValidation.js';
 
 /**
@@ -58,6 +60,29 @@ class ValidationProvider {
     await SkillValidation.updateMany({ userId, skill, isLatest: true }, { isLatest: false });
     
     await validation.save();
+
+    // ── TOP AHEAD: LINK TO PKG INTELLIGENCE ──
+    try {
+        await pkgService.processEvent(userId, 'challenge_completed', {
+            skill,
+            topic: `Validation: ${type}`,
+            score: result.score,
+            timeSpent: data?.timeSpent || 0,
+            isAIGenerated: false
+        });
+        logger.info({ userId, skill }, '[ValidationProvider] Signal propagated to PKG');
+
+        // Check if we can auto-advance active missions based on this validation
+        const advanced = await missionService.autoAdvanceFromValidation(userId, skill, result.score);
+        if (advanced && advanced.length > 0) {
+            validation.metadata.autoAdvancedMissions = advanced;
+            await validation.save();
+            logger.info({ userId, skill, advanced }, '[ValidationProvider] Auto-advanced missions from validation');
+        }
+    } catch (err) {
+        logger.error({ userId, skill, error: err.message }, '[ValidationProvider] Failed to propagate signal to PKG or advance mission');
+    }
+
     return validation;
   }
 }

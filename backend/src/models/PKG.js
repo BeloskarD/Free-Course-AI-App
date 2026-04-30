@@ -330,7 +330,7 @@ const pkgSchema = new mongoose.Schema({
 // ========================================
 // INDEXES
 // ========================================
-pkgSchema.index({ userId: 1 });
+// pkgSchema.index({ userId: 1 }); // Already indexed in schema definition
 pkgSchema.index({ 'wellbeing.currentBurnoutRisk': 1 });
 pkgSchema.index({ 'momentum.currentStreak': -1 });
 

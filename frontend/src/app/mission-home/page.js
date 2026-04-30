@@ -11,12 +11,19 @@ import { useMissions, useRecommendedMissions, useStartMission } from '../lib/hoo
 import { useGuardian } from '../../context/GuardianContext';
 import { useAuth } from '../../context/AuthContext';
 import Link from 'next/link';
-import { Rocket, History, LayoutDashboard, ArrowRight, Zap } from 'lucide-react';
+import { Rocket, History, LayoutDashboard, ArrowRight, Zap, ShieldCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import SkillValidationModal from '../../components/career/SkillValidationModal';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function MissionHomePage() {
     const { token } = useAuth();
     const router = useRouter();
+    const queryClient = useQueryClient();
+
+    const [showValidation, setShowValidation] = useState(false);
+    const [validationSkill, setValidationSkill] = useState("");
 
     // Fetch missions
     const { data: missionsData, isLoading: loadingMissions } = useMissions();
@@ -71,6 +78,12 @@ export default function MissionHomePage() {
         } catch (e) {
             console.error('Failed to start mission:', e);
         }
+    };
+
+    const handleVerifySkill = (e, skill) => {
+        e.stopPropagation();
+        setValidationSkill(skill);
+        setShowValidation(true);
     };
 
     return (
@@ -186,15 +199,23 @@ export default function MissionHomePage() {
                                         </div>
                                     </div>
 
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            router.push(`/missions/${primaryMission._id}`);
-                                        }}
-                                        className="w-full py-5 rounded-2xl bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-white font-black uppercase tracking-[0.3em] text-[11px] shadow-2xl hover:shadow-[var(--accent-primary)]/40 hover:scale-[1.02] active:scale-95 transition-all duration-500 flex items-center justify-center gap-3 btn-tactile"
-                                    >
-                                        Continue Learning <Rocket size={18} />
-                                    </button>
+                                    <div className="flex flex-col sm:flex-row gap-4">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                router.push(`/missions/${primaryMission._id}`);
+                                            }}
+                                            className="flex-1 py-5 rounded-2xl bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-white font-black uppercase tracking-[0.3em] text-[11px] shadow-2xl hover:shadow-[var(--accent-primary)]/40 hover:scale-[1.02] active:scale-95 transition-all duration-500 flex items-center justify-center gap-3 btn-tactile"
+                                        >
+                                            Continue Learning <Rocket size={18} />
+                                        </button>
+                                        <button
+                                            onClick={(e) => handleVerifySkill(e, primaryMission.skill)}
+                                            className="px-8 py-5 rounded-2xl bg-[var(--site-text)]/5 text-[var(--site-text)] hover:text-[var(--accent-primary)] font-black uppercase tracking-[0.3em] text-[11px] border border-[var(--border-primary)] hover:border-[var(--accent-primary)]/30 transition-all flex items-center justify-center gap-3"
+                                        >
+                                            Verify Signal <ShieldCheck size={18} />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -310,6 +331,16 @@ export default function MissionHomePage() {
                 </div>
 
             </div>
+
+            <SkillValidationModal 
+                isOpen={showValidation} 
+                onClose={() => setShowValidation(false)} 
+                skill={validationSkill} 
+                onValidated={() => {
+                    queryClient.invalidateQueries({ queryKey: ["hiring-readiness"] });
+                    queryClient.invalidateQueries({ queryKey: ["career-timeline"] });
+                }}
+            />
         </div>
     );
 }

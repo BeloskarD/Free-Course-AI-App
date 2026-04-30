@@ -12,6 +12,7 @@
 import { Mission, UserMissionProgress, MISSION_SOURCES, STAGE_TYPES } from '../models/Mission.js';
 import pkgService, { PKG_EVENTS } from './pkgService.js';
 import { missionRepository } from '../repositories/index.js';
+import config from '../config/env.js';
 
 function compareMissionProgressPriority(a, b) {
     const statusRank = {
@@ -692,6 +693,41 @@ export async function getRecommendedMissions(userId, limit = 5) {
     return recommendedMissions.slice(0, limit);
 }
 
+/**
+ * Auto-advance mission progress based on skill validation score
+ * @param {string} userId 
+ * @param {string} skill 
+ * @param {number} score 
+ */
+export async function autoAdvanceFromValidation(userId, skill, score) {
+    if (score < config.missionAutoAdvanceThreshold) return [];
+
+    const activeMissions = await getUserActiveMissions(userId);
+    let advancedMissions = [];
+
+    for (const progress of activeMissions) {
+        const mission = progress.missionId;
+        if (!mission || !mission.skill) continue;
+
+        const normalizedMissionSkill = mission.skill.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const normalizedValidatedSkill = skill.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+        if (normalizedMissionSkill === normalizedValidatedSkill) {
+            const currentStage = mission.stages.find(s => s.stageId === progress.currentStage);
+            if (currentStage && currentStage.type === STAGE_TYPES.CHALLENGE) {
+                await updateStageProgress(mission._id, userId, currentStage.stageId, {
+                    score,
+                    passed: true,
+                    timeSpent: 15 // Equivalent
+                });
+                advancedMissions.push(mission.title);
+                console.log(`[MissionService] Auto-advanced ${mission.title} stage ${currentStage.stageId} via validation`);
+            }
+        }
+    }
+    return advancedMissions;
+}
+
 // ========================================
 // GUARDIAN INTEGRATION
 // ========================================
@@ -769,6 +805,9 @@ export default {
 
     // Guardian
     createGuardianMissionRecommendation,
+
+    // Integration
+    autoAdvanceFromValidation,
 
     // Constants
     MISSION_SOURCES,

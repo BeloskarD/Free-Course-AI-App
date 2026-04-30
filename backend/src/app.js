@@ -50,13 +50,14 @@ app.set('trust proxy', 1);
  * ── OBSERVIEBILITY: Sentry Initialization ──
  * Must be initialized BEFORE any other middleware
  */
-if (config.sentryDsn) {
-  Sentry.init({
-    dsn: config.sentryDsn,
-    environment: config.nodeEnv,
-    tracesSampleRate: 1.0,
-  });
-}
+const SENTRY_DSN = config.sentryDsn || 'https://890598de911a707d7860b06ff5dc8779@o4511292664840192.ingest.us.sentry.io/4511292688826368';
+
+Sentry.init({
+  dsn: SENTRY_DSN,
+  environment: config.nodeEnv,
+  tracesSampleRate: config.nodeEnv === 'production' ? 0.2 : 1.0,
+  release: process.env.SENTRY_RELEASE || 'zeeklect-os@1.0.0',
+});
 
 // ── CORE MIDDLEWARE ──
 app.use(requestIdMiddleware);
@@ -99,6 +100,11 @@ const allowedOrigins = [
   'https://zeeklect-ai.vercel.app',
   'https://zeeklect.com'
 ].filter(Boolean);
+
+// Add local origins for development
+if (config.nodeEnv !== 'production') {
+  allowedOrigins.push('http://localhost:3000', 'http://127.0.0.1:3000');
+}
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -177,7 +183,7 @@ app.use('/api/interview-prep', interviewPrepRoutes);
 
 
 // ── ERROR HANDLING ──
-// Sentry v10+ handles errors automatically once initialized.
+Sentry.setupExpressErrorHandler(app);
 
 // ── 404 HANDLER (MUST be after all routes) ──
 app.use((req, res, next) => {

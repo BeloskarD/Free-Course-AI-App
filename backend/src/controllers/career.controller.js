@@ -7,6 +7,7 @@ import CareerTimeline from '../models/CareerTimeline.js';
 import Notification from '../models/Notification.js';
 import LearnerProfile from '../models/LearnerProfile.js';
 import publicProfileService from '../services/publicProfile.service.js';
+import challengeGeneratorService from '../services/challengeGenerator.service.js';
 
 
 /**
@@ -153,6 +154,38 @@ export const validateSkill = async (req, res, next) => {
   }
 };
 
+export const generateProbe = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { skill, type } = req.query;
+
+    if (!skill || !type) {
+      return res.status(400).json({ success: false, message: 'Skill and type are required' });
+    }
+
+    const probe = await challengeGeneratorService.generateValidationProbe(userId, skill, type);
+    res.json({ success: true, data: probe });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const generateStrategy = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { skill } = req.query;
+
+    if (!skill) {
+      return res.status(400).json({ success: false, message: 'Skill is required' });
+    }
+
+    const strategy = await challengeGeneratorService.generateStrategy(userId, skill);
+    res.json({ success: true, data: strategy });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getNotifications = async (req, res, next) => {
   try {
     const userId = req.user.id;
@@ -201,6 +234,23 @@ export const getPublicProfile = async (req, res, next) => {
   }
 };
 
+import radarEngine from '../services/radarEngine.js';
+
+export const getRadarBreakdown = async (req, res, next) => {
+  const userId = req.user?.id || req.userId;
+  if (!userId) {
+    return res.status(401).json({ success: false, message: "Unauthorized" });
+  }
+
+  try {
+    const radarData = await radarEngine.getRadarBreakdown(userId);
+    res.json({ success: true, data: radarData });
+  } catch (error) {
+    logger.error(`[Career Controller] Radar error for ${userId}:`, error.stack);
+    next(error);
+  }
+};
+
 export default {
   getHiringReadiness,
   getCareerTimeline,
@@ -208,5 +258,8 @@ export default {
   getNotifications,
   markNotificationAsRead,
   deleteNotification,
-  getPublicProfile
+  getPublicProfile,
+  generateProbe,
+  generateStrategy,
+  getRadarBreakdown
 };

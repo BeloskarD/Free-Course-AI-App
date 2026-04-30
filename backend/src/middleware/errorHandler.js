@@ -1,5 +1,10 @@
 // Centralized Error Handler Middleware
+import * as Sentry from "@sentry/node";
+
 export const errorHandler = (err, req, res, next) => {
+  // Capture exception in Sentry
+  Sentry.captureException(err);
+
   // Log error with request ID for tracing
   const requestId = req.id || 'unknown';
   

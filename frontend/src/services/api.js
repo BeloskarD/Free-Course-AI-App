@@ -505,6 +505,13 @@ export const api = {
     return res.json();
   },
 
+  async getRadarBreakdown(token) {
+    const res = await fetch(`${API_BASE}/career/radar`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.json();
+  },
+
   // --- Career Engine ---
   async getHiringReadiness(token) {
     const res = await fetch(`${API_BASE}/career/readiness`, {
@@ -536,6 +543,20 @@ export const api = {
       body: JSON.stringify({ skill, type, data }),
     });
     return this.safeJson(res, `${API_BASE}/career/validate`);
+  },
+
+  async generateProbe(skill, type, token) {
+    const res = await fetch(`${API_BASE}/career/generate-probe?skill=${encodeURIComponent(skill)}&type=${encodeURIComponent(type)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.json();
+  },
+
+  async generateStrategy(skill, token) {
+    const res = await fetch(`${API_BASE}/career/generate-strategy?skill=${encodeURIComponent(skill)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.json();
   },
 
   async getCareerNotifications(token) {

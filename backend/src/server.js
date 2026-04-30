@@ -27,6 +27,14 @@ const connectDB = async () => {
     });
     console.log(`✅ Mongo connected successfully to: ${mongoose.connection.db?.databaseName}`);
     
+    // Seed initial database data
+    try {
+      const roleTaxonomyService = (await import('./services/roleTaxonomy.service.js')).default;
+      await roleTaxonomyService.seedRoles();
+    } catch (e) {
+      console.error("❌ Failed to seed data:", e);
+    }
+
     // Initialize AI Background Workers ONLY if role is worker/both
     if (isWorker) {
       initializeWorkers();

@@ -71,7 +71,10 @@ const nextConfig = {
   },
   // Optimize for production
   compress: true,
-  poweredByHeader: false
+  poweredByHeader: false,
+  experimental: {
+    allowedDevOrigins: ['192.168.0.219.nip.io', 'localhost:3000']
+  }
 };
 
 export default nextConfig;

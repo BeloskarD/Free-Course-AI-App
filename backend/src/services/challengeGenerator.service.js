@@ -212,8 +212,136 @@ function getHistory(userId) {
     return generatedCache.get(userId.toString()) || [];
 }
 
+async function generateValidationProbe(userId, skillName, type) {
+    const pkg = await pkgService.getPKG(userId);
+    const profile = await LearnerProfile.findOne({ userId }).lean();
+    const groq = getGroqClient();
+
+    if (!groq) {
+        throw new Error('AI Engine (Groq) is currently unavailable.');
+    }
+
+    const targetRole = profile?.goals?.targetRole || 'Software Professional';
+    const skillData = pkg.skills?.[skillName] || {};
+    const mastery = skillData.masteryScore || 0;
+
+    const systemPrompt = `You are an elite industry auditor for Zeeklect OS. Your goal is to generate "Professional Reasoning Probes" that separate Top 1% talent from juniors. 
+    Focus on real-world architectural decisions, performance trade-offs, and production resilience.
+    Return ONLY valid JSON.`;
+
+    let prompt = '';
+    if (type === 'mcq') {
+        prompt = `Generate 3 advanced MCQ questions for the skill "${skillName}".
+        Target Role: ${targetRole}
+        User Mastery: ${Math.round(mastery * 100)}%
+        
+        Focus on: Architectural reasoning, production bottlenecks, and senior-level decision making.
+        
+        Return JSON format:
+        {
+          "title": "string",
+          "description": "string",
+          "questions": [
+            {
+              "prompt": "string",
+              "options": ["string", "string", "string", "string"],
+              "correctIndex": number
+            }
+          ]
+        }`;
+    } else {
+        prompt = `Generate a high-level "Architectural Snapshot" code challenge for the skill "${skillName}".
+        Target Role: ${targetRole}
+        User Mastery: ${Math.round(mastery * 100)}%
+        
+        The challenge should require writing a production-grade utility or logic block.
+        
+        Return JSON format:
+        {
+          "title": "string",
+          "description": "string",
+          "prompt": "detailed task description",
+          "starter": "code snippet to start with",
+          "expectedKeywords": ["keyword1", "keyword2"]
+        }`;
+    }
+
+    try {
+        const completion = await groq.chat.completions.create({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: prompt }
+            ],
+            temperature: 0.7,
+            max_tokens: 1000
+        });
+
+        const text = completion.choices?.[0]?.message?.content || '';
+        const parsed = extractJSON(text);
+        if (parsed) return parsed;
+        throw new Error('Failed to parse AI response');
+    } catch (err) {
+        console.error('[ChallengeGenerator] Probe generation error:', err.message);
+        throw err;
+    }
+}
+
+async function generateStrategy(userId, skillName) {
+    const pkg = await pkgService.getPKG(userId);
+    const profile = await LearnerProfile.findOne({ userId }).lean();
+    const groq = getGroqClient();
+
+    if (!groq) {
+        throw new Error('AI Engine (Groq) is currently unavailable.');
+    }
+
+    const targetRole = profile?.goals?.targetRole || 'Software Professional';
+    const skillData = pkg.skills?.[skillName] || {};
+    const mastery = skillData.masteryScore || 0;
+
+    const systemPrompt = `You are an elite career strategist for Zeeklect OS. Your goal is to generate a high-impact "Top Ahead" career strategy for the user based on their skill mastery.
+    Focus on: How to position this skill for 10x impact, which companies to target, and what specific projects will move the needle.
+    Return ONLY valid JSON.`;
+
+    const prompt = `Generate a career strategy for: ${skillName}.
+    User's Role: ${targetRole}
+    Current Mastery: ${Math.round(mastery * 100)}%
+    
+    Return JSON format:
+    {
+      "summary": "High-level strategic summary",
+      "marketPosition": "How they should position themselves",
+      "targetAction": "One specific high-impact action to take now",
+      "portfolioAdvice": "What to build to prove mastery",
+      "keywords": ["key", "words", "to", "use"]
+    }`;
+
+    try {
+        const completion = await groq.chat.completions.create({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: prompt }
+            ],
+            temperature: 0.8,
+            max_tokens: 1000
+        });
+
+        const text = completion.choices?.[0]?.message?.content || '';
+        const parsed = extractJSON(text);
+        if (parsed) return parsed;
+        throw new Error('Failed to parse Strategy response');
+    } catch (err) {
+        console.error('[ChallengeGenerator] Strategy generation error:', err.message);
+        throw err;
+    }
+}
+
 export default {
     generateChallenge,
+    generateValidationProbe,
+    generateStrategy,
     getSuggestions,
     getHistory,
     selectTargetSkills,

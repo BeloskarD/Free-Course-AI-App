@@ -44,6 +44,7 @@ export const config = {
   sentryDsn: process.env.SENTRY_DSN,
   posthogApiKey: process.env.POSTHOG_API_KEY,
   keepAliveInterval: parseInt(process.env.KEEP_ALIVE_INTERVAL || '600000'),
+  missionAutoAdvanceThreshold: parseInt(process.env.MISSION_AUTO_ADVANCE_THRESHOLD || '50'),
 };
 
 export default config;

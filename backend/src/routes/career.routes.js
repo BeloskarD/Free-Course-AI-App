@@ -17,6 +17,12 @@ router.use(authenticate);
 router.get('/readiness', careerController.getHiringReadiness);
 
 /**
+ * @route GET /api/career/radar
+ * @desc Get radar breakdown mapped to target role
+ */
+router.get('/radar', careerController.getRadarBreakdown);
+
+/**
  * @route GET /api/career/timeline
  * @desc Get data-driven career timeline projection
  */
@@ -27,6 +33,8 @@ router.get('/timeline', careerController.getCareerTimeline);
  * @desc Perform skill validation (MCQ, Code, Project)
  */
 router.post('/validate', careerController.validateSkill);
+router.get('/generate-probe', careerController.generateProbe);
+router.get('/generate-strategy', careerController.generateStrategy);
 
 /**
  * @route GET /api/career/notifications
