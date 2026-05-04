@@ -215,6 +215,35 @@ export const api = {
     return res.json();
   },
 
+  async getBillingPlans() {
+    const res = await fetch(`${API_BASE}/billing/plans`);
+    return this.safeJson(res, `${API_BASE}/billing/plans`);
+  },
+
+  async getSubscriptionStatus(token) {
+    const res = await fetch(`${API_BASE}/billing/subscription`, {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    });
+    return this.safeJson(res, `${API_BASE}/billing/subscription`);
+  },
+
+  async createCheckoutSession(token, source = 'pricing_page') {
+    const res = await fetch(`${API_BASE}/billing/checkout-session`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ source }),
+    });
+    return this.safeJson(res, `${API_BASE}/billing/checkout-session`);
+  },
+
+  async createBillingPortalSession(token) {
+    const res = await fetch(`${API_BASE}/billing/portal-session`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    });
+    return this.safeJson(res, `${API_BASE}/billing/portal-session`);
+  },
+
   async updateProfile(data, token) {
     const res = await fetch(`${API_BASE}/user/profile`, {
       method: "PUT",

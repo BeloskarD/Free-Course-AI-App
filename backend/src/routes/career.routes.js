@@ -1,7 +1,9 @@
 import express from 'express';
 import { authenticate } from '../middleware/auth.js';
+import { getFeatureLimit } from '../config/billing.js';
 import careerController from '../controllers/career.controller.js';
 import growthController from '../controllers/growth.controller.js';
+import { subscriptionGuard } from '../middleware/subscriptionGuard.js';
 
 const router = express.Router();
 
@@ -32,7 +34,7 @@ router.get('/timeline', careerController.getCareerTimeline);
  * @route POST /api/career/validate
  * @desc Perform skill validation (MCQ, Code, Project)
  */
-router.post('/validate', careerController.validateSkill);
+router.post('/validate', subscriptionGuard('validation_limit', getFeatureLimit('free', 'validation_limit')), careerController.validateSkill);
 router.get('/generate-probe', careerController.generateProbe);
 router.get('/generate-strategy', careerController.generateStrategy);
 

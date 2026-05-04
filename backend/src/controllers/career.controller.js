@@ -8,6 +8,7 @@ import Notification from '../models/Notification.js';
 import LearnerProfile from '../models/LearnerProfile.js';
 import publicProfileService from '../services/publicProfile.service.js';
 import challengeGeneratorService from '../services/challengeGenerator.service.js';
+import { recordValidationUsage } from '../middleware/subscriptionGuard.js';
 
 
 /**
@@ -138,6 +139,7 @@ export const validateSkill = async (req, res, next) => {
     const { skill, type, data } = req.body;
 
     const validation = await validationProvider.validate(userId, skill, type, data);
+    await recordValidationUsage(userId);
     
     // After validation, recalculate readiness score
     const newReadiness = await hiringReadinessEngine.calculateScore(userId);

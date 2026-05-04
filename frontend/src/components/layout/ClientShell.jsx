@@ -13,6 +13,10 @@ export default function ClientShell({ children }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const pathname = usePathname();
+  
+  useEffect(() => {
+    console.log(`%c[Navigation] %cRoute changed to: ${pathname}`, 'color: #6366f1; font-weight: bold;', 'color: inherit;');
+  }, [pathname]);
 
   // Auto-collapse sidebar on smaller screens
   useEffect(() => {

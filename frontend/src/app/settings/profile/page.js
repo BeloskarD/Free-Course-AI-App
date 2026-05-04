@@ -18,7 +18,8 @@ import {
     AlertTriangle,
     Upload,
     X,
-    ImageIcon
+    ImageIcon,
+    CreditCard
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -229,6 +230,26 @@ export default function ProfileSettingsPage() {
                                 Manage your account settings and preferences
                             </p>
                         </div>
+                    </div>
+                </div>
+
+                <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl sm:rounded-3xl p-6 sm:p-8 mb-6 sm:mb-8 shadow-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <CreditCard size={20} className="text-[var(--accent-primary)]" />
+                            <div>
+                                <h2 className="text-lg sm:text-xl font-black">Billing & Plan</h2>
+                                <p className="text-sm font-bold text-[var(--site-text-muted)] mt-1">
+                                    Current tier: <span className="capitalize text-[var(--site-text)]">{user?.subscriptionTier || 'free'}</span>
+                                </p>
+                            </div>
+                        </div>
+                        <Link
+                            href="/settings/billing"
+                            className="inline-flex items-center justify-center px-5 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black uppercase tracking-[0.24em] text-xs hover:scale-[1.02] transition-transform"
+                        >
+                            Manage Billing
+                        </Link>
                     </div>
                 </div>
 

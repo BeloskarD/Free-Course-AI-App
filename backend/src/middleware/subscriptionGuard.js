@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import UserProgress from '../models/UserProgress.js';
+import { getFeatureLimit, hasFeatureAccess } from '../config/billing.js';
 
 /**
  * SUBSCRIPTION GUARD (Zeeklect v3)
@@ -16,6 +17,8 @@ export const subscriptionGuard = (feature, limit = 0) => {
       // Pro users always pass
       if (user.subscriptionTier === 'pro') return next();
 
+      const resolvedLimit = Number.isFinite(limit) && limit > 0 ? limit : getFeatureLimit(user.subscriptionTier, feature);
+
       // Feature specific gating
       if (feature === 'validation_limit') {
         const currentWeek = getYearWeek();
@@ -24,19 +27,23 @@ export const subscriptionGuard = (feature, limit = 0) => {
         const weekUsage = progress?.validationUsage?.find(u => u.week === currentWeek);
         const count = weekUsage?.count || 0;
 
-        if (count >= limit) {
+        if (count >= resolvedLimit) {
           return res.status(403).json({
             success: false,
             limitReached: true,
             tier: 'free',
             feature: 'Skill Validation',
-            message: 'Weekly verification limit reached (3/week for Free tier).',
+            message: `Weekly verification limit reached (${resolvedLimit}/week for Free tier).`,
             unlockCta: 'Unlock Unlimited Validations with Pro'
           });
         }
       }
 
       if (feature === 'advanced_insights') {
+        if (hasFeatureAccess(user.subscriptionTier, 'advancedInsights')) {
+          return next();
+        }
+
         // Soft gate: Allow preview but flag as pro for frontend to hide details
         req.isProRequested = true;
         return next();
@@ -48,6 +55,28 @@ export const subscriptionGuard = (feature, limit = 0) => {
     }
   };
 };
+
+export async function recordValidationUsage(userId) {
+  const currentWeek = getYearWeek();
+  const progress = await UserProgress.findOne({ userId });
+
+  if (!progress) {
+    await UserProgress.create({
+      userId,
+      validationUsage: [{ week: currentWeek, count: 1 }],
+    });
+    return;
+  }
+
+  const existing = progress.validationUsage?.find((entry) => entry.week === currentWeek);
+  if (existing) {
+    existing.count += 1;
+  } else {
+    progress.validationUsage = [...(progress.validationUsage || []), { week: currentWeek, count: 1 }].slice(-12);
+  }
+
+  await progress.save();
+}
 
 function getYearWeek() {
   const d = new Date();

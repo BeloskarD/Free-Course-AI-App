@@ -22,6 +22,7 @@ import Surface from "../ui/Surface";
 import { api } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
+import { useNotification } from "../../context/NotificationContext";
 
 const normalizeSkillLabel = (skill) => {
   if (!skill) return "Core Competency";
@@ -144,6 +145,7 @@ const buildCodeSession = (rawSkill) => {
 
 const SkillValidationModal = ({ isOpen, onClose, skill, onValidated }) => {
   const { token } = useAuth();
+  const { notify } = useNotification();
   const displaySkill = normalizeSkillLabel(skill);
   const mcqSession = buildMcqSession(displaySkill);
   const codeSession = buildCodeSession(displaySkill);
@@ -157,6 +159,7 @@ const SkillValidationModal = ({ isOpen, onClose, skill, onValidated }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [dynamicProbe, setDynamicProbe] = useState(null);
   const [strategyData, setStrategyData] = useState(null);
+  const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -302,6 +305,26 @@ const SkillValidationModal = ({ isOpen, onClose, skill, onValidated }) => {
     });
   };
 
+  const handleUpgrade = async () => {
+    if (!token) {
+      window.location.href = "/auth/login";
+      return;
+    }
+
+    setIsStartingCheckout(true);
+    try {
+      const res = await api.createCheckoutSession(token, "skill_validation");
+      if (!res.success || !res.data?.url) {
+        throw new Error(res.message || "Unable to start checkout right now.");
+      }
+
+      window.location.href = res.data.url;
+    } catch (error) {
+      notify.error(error.message || "Unable to start checkout right now.");
+      setIsStartingCheckout(false);
+    }
+  };
+
   const canSubmitMcq = selectedAnswers.length === mcqSession.questions.length && selectedAnswers.every((answer) => Number.isInteger(answer));
   const canSubmitCode = codeAnswer.trim().length >= 10;
 
@@ -366,8 +389,16 @@ const SkillValidationModal = ({ isOpen, onClose, skill, onValidated }) => {
                         {errorData.message}
                       </p>
                     </div>
-                    <Link href="/settings/upgrade" className="w-full sm:w-auto inline-flex justify-center py-4 px-8 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-3xl font-black text-xs uppercase tracking-widest shadow-xl items-center gap-3">
+                    <button
+                      onClick={handleUpgrade}
+                      disabled={isStartingCheckout}
+                      className="w-full sm:w-auto inline-flex justify-center py-4 px-8 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-3xl font-black text-xs uppercase tracking-widest shadow-xl items-center gap-3 cursor-pointer disabled:opacity-70 disabled:cursor-wait"
+                    >
+                      {isStartingCheckout ? <Loader2 size={16} className="animate-spin" /> : null}
                       {errorData.cta} <ArrowRight size={16} />
+                    </button>
+                    <Link href="/pricing?source=skill_validation" className="block text-[11px] font-black uppercase tracking-[0.25em] text-[var(--site-text-muted)] hover:text-[var(--accent-primary)] transition-colors">
+                      View full plan details
                     </Link>
                   </div>
                 ) : (

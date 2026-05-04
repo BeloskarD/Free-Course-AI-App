@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  transpilePackages: ['lucide-react'],
   images: {
     remotePatterns: [
       {
@@ -72,9 +73,15 @@ const nextConfig = {
   // Optimize for production
   compress: true,
   poweredByHeader: false,
-  experimental: {
-    allowedDevOrigins: ['192.168.0.219.nip.io', 'localhost:3000']
-  }
+  allowedDevOrigins: [
+    '192.168.0.219',
+    '192.168.0.219:3000',
+    'http://192.168.0.219:3000',
+    'http://192.168.0.219.nip.io:3000',
+    '192.168.0.219.nip.io:3000',
+    'localhost:3000',
+    'http://localhost:3000'
+  ]
 };
 
 export default nextConfig;

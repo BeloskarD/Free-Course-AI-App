@@ -355,6 +355,19 @@ Return ONLY valid JSON.`;
     }
   }, [aiData, isFetching, lastSearchedQuery]);
 
+  const handleSafeOpen = (link, category) => {
+    if (!link || link === '#' || link === 'String' || link === 'URL' || link.includes('placeholder')) {
+      setModalConfig({
+        title: "Link Verification",
+        message: `This ${category} link is currently being verified by our AI engines. Please check back in a moment or search for the title directly.`,
+        type: "info"
+      });
+      setShowModal(true);
+      return;
+    }
+    window.open(link, "_blank");
+  };
+
   const shouldHideInitialCache = activeRequestQuery && activeRequestQuery !== initialCache?.query;
   const displayData = aiData || (shouldHideInitialCache ? null : initialCache?.data);
   const isFromCache = !aiData && !!initialCache;
@@ -1037,7 +1050,7 @@ Return ONLY valid JSON.`;
                     <YouTubeVideoCard
                       key={i}
                       video={video}
-                      onClick={() => window.open(video.link, "_blank")}
+                      onClick={() => handleSafeOpen(video.link || video.url, "video")}
                       isSaved={isCourseAlreadySaved(video.title)}
                       onSaveSuccess={handleSaveSuccess}
                       onRemoveSuccess={handleSaveSuccess}
@@ -1065,7 +1078,7 @@ Return ONLY valid JSON.`;
                     <ResourceCard
                       key={i}
                       resource={resource}
-                      onClick={() => window.open(resource.link, "_blank")}
+                      onClick={() => handleSafeOpen(resource.link || resource.url, "resource")}
                     />
                   ))}
                 </div>
@@ -1090,7 +1103,7 @@ Return ONLY valid JSON.`;
                     <ProjectCard
                       key={i}
                       project={project}
-                      onClick={() => window.open(project.link, "_blank")}
+                      onClick={() => handleSafeOpen(project.link || project.url, "project")}
                     />
                   ))}
                 </div>

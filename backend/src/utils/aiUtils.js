@@ -163,6 +163,49 @@ function normalizeItem(item, mode) {
         normalized.provider = normalized.platform || normalized.source || normalized.company;
     }
 
+    // 2b. Enforce URL Accuracy from Platform (Anti-Hallucination)
+    // If the AI specifies a platform (e.g. edX) but hallucinates a URL for another platform (e.g. coursera.org),
+    // we MUST correct the URL to point to the intended platform's search page, rather than changing the platform.
+    const intendedPlatform = (normalized.platform || '').toLowerCase();
+    const currentLink = (normalized.link || normalized.url || '').toLowerCase();
+    
+    if (intendedPlatform && currentLink) {
+        const queryParam = encodeURIComponent(normalized.title || 'course');
+        
+        const platformDomains = {
+            'udemy': 'udemy.com',
+            'coursera': 'coursera.org',
+            'edx': 'edx.org',
+            'pluralsight': 'pluralsight.com',
+            'simplilearn': 'simplilearn.com',
+            'youtube': 'youtube.com',
+            'github': 'github.com'
+        };
+
+        for (const [pName, pDomain] of Object.entries(platformDomains)) {
+            // If the intended platform matches our known list, BUT the current link belongs to a DIFFERENT platform
+            if (intendedPlatform.includes(pName) && !currentLink.includes(pDomain)) {
+                // Check if the link hallucinates another known platform
+                const hallucinatesOther = Object.values(platformDomains).some(domain => 
+                    domain !== pDomain && currentLink.includes(domain)
+                );
+                
+                if (hallucinatesOther) {
+                    // Correct the URL to the intended platform's search page
+                    if (pName === 'udemy') normalized.link = `https://www.udemy.com/courses/search/?q=${queryParam}`;
+                    else if (pName === 'coursera') normalized.link = `https://www.coursera.org/search?query=${queryParam}`;
+                    else if (pName === 'edx') normalized.link = `https://www.edx.org/search?q=${queryParam}`;
+                    else if (pName === 'pluralsight') normalized.link = `https://www.pluralsight.com/search?q=${queryParam}`;
+                    else if (pName === 'simplilearn') normalized.link = `https://www.simplilearn.com/search?q=${queryParam}`;
+                    else if (pName === 'youtube') normalized.link = `https://www.youtube.com/results?search_query=${queryParam}`;
+                    else if (pName === 'github') normalized.link = `https://github.com/search?q=${queryParam}`;
+                    
+                    normalized.url = normalized.link;
+                }
+            }
+        }
+    }
+
     // 3. Unified Link/URL Mapping
     if (!normalized.link) {
         normalized.link = normalized.url || normalized.website_link || normalized.official_link || normalized.href || normalized.course_link || normalized.tool_link;

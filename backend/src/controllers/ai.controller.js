@@ -95,19 +95,41 @@ const parseValidatedAIIntelResponse = (rawContent) => {
 };
 
 const buildFallbackAiResult = (query, searchData, currentYear) => {
-  const topCourses = (searchData?.courses || []).slice(0, 6).map((item, index) => ({
+  // Prioritize direct links for fallback courses
+  const sortedFallbackCourses = [...(searchData?.courses || [])].sort((a, b) => {
+    const aDirect = isDirectCourseLink(a.url) ? 1 : 0;
+    const bDirect = isDirectCourseLink(b.url) ? 1 : 0;
+    return bDirect - aDirect;
+  });
+
+  const topCourses = sortedFallbackCourses.slice(0, 6).map((item, index) => {
+    const platformName = getPlatformFromUrl(item.url);
+    let fallbackLink = item.url || "https://www.udemy.com";
+    
+    if (!isDirectCourseLink(fallbackLink)) {
+        const queryParam = encodeURIComponent(item.title || query);
+        const pName = platformName.toLowerCase();
+        if (pName.includes('udemy')) fallbackLink = `https://www.udemy.com/courses/search/?q=${queryParam}`;
+        else if (pName.includes('coursera')) fallbackLink = `https://www.coursera.org/search?query=${queryParam}`;
+        else if (pName.includes('edx')) fallbackLink = `https://www.edx.org/search?q=${queryParam}`;
+        else if (pName.includes('pluralsight')) fallbackLink = `https://www.pluralsight.com/search?q=${queryParam}`;
+        else if (pName.includes('simplilearn')) fallbackLink = `https://www.simplilearn.com/search?q=${queryParam}`;
+    }
+
+    return {
     title: item.title,
-    platform: getPlatformFromUrl(item.url),
+    platform: platformName,
     type: 'Visit Site',
     price: null,
-    link: isDirectCourseLink(item.url) ? item.url : "https://www.udemy.com",
+    link: fallbackLink,
     level: index < 2 ? 'Beginner' : index < 4 ? 'Intermediate' : 'Advanced',
     language: 'English',
     coversSkills: [query],
     isBestMatch: index === 0,
     matchScore: Math.max(80, 96 - (index * 2)),
     whyThisCourse: (item.snippet || `Relevant curated course for ${query} found via verified search.`).substring(0, 157) + "...",
-  }));
+  };
+  });
 
 
   const topVideos = (searchData?.videos || []).slice(0, 6).map((item, index) => ({
@@ -298,13 +320,17 @@ function isDirectCourseLink(url) {
     pluralsight: /\/courses\/[^\/]+/,
     simplilearn: /\.com\/.*-training-/,
     youtube: /(watch\?v=[^&]+|youtu\.be\/[^\?\/]+)/,
-    github: /\/github\.com\/[^\/]+\/[^\/]+(\/blob\/|\/tree\/|#)?$/
+    github: /\/github\.com\/[^\/]+\/[^\/]+(\/blob\/|\/tree\/|#)?$/,
+    mdn: /developer\.mozilla\.org\/[^\/]+/,
+    react: /react\.dev\/[^\/]+/,
+    documentation: /(docs\.|developer\.|api\.)[^\/]+\.[^\/]+/
   };
 
   const antiPatterns = [
     '/search?', '/search/', '/catalog', '/category', '/browse',
     '/directory', '/course-directory', 'query=', 'google.com/search',
-    '/roadmap', '/signup', '/login', '#search', '?q=', '&q='
+    '/roadmap', '/signup', '/login', '#search', '?q=', '&q=',
+    'localhost', '127.0.0.1'
   ];
 
   if (antiPatterns.some(ap => u.includes(ap))) return false;
@@ -370,7 +396,7 @@ async function searchWithTavily(query, options = {}) {
   }
 }
 
-async function performComprehensiveSearch(query, currentYear) {
+export async function performComprehensiveSearch(query, currentYear) {
   const results = { courses: [], blueprints: [], projects: [], videos: [], tools: [], provider: "tavily" };
   const keys = ['courses', 'blueprints', 'projects', 'videos', 'tools'];
 
@@ -542,8 +568,15 @@ Do not include markdown or conversational text anywhere. Ensure all JSON keys ar
         // --- ANTI-HALLUCINATION GUARD (Zero-Confusion v3.5) ---
         // Loosened to allow deep links if the domain/origin is present in evidence.
         if (normalized && (mode === 'intelligence' || mode === 'courses')) {
-          const evidenceUrls = new Set([...searchData.courses.map(r => normalizeUrl(r.url)), ...searchData.videos.map(r => normalizeUrl(r.url))]);
-          const evidenceDomains = new Set([...searchData.courses, ...searchData.videos].map(r => {
+          const allEvidenceSources = [
+            ...searchData.courses, 
+            ...searchData.videos, 
+            ...searchData.blueprints, 
+            ...searchData.projects, 
+            ...searchData.tools
+          ];
+          const evidenceUrls = new Set(allEvidenceSources.map(r => normalizeUrl(r.url)));
+          const evidenceDomains = new Set(allEvidenceSources.map(r => {
             try { return new URL(r.url).hostname.replace('www.', ''); } catch(e) { return null; }
           }).filter(Boolean));
 
@@ -551,26 +584,31 @@ Do not include markdown or conversational text anywhere. Ensure all JSON keys ar
             const initialCount = items.length;
             const filtered = items.filter(item => {
               const link = item.link || item.url;
-              if (!link) return false;
+              if (!link || typeof link !== 'string') return false;
               
+              // Block placeholders
+              const isPlaceholder = ['string', '#', 'url', 'http://localhost', 'placeholder'].some(p => link.toLowerCase().includes(p));
+              if (isPlaceholder && link.length < 20) return false;
+
               const nLink = normalizeUrl(link);
               const linkDomain = (function() {
                 try { return new URL(link).hostname.replace('www.', ''); } catch(e) { return null; }
               })();
 
-              // 1. Block known junk (search engines, login pages)
-              const blackList = ['google.com/search', 'bing.com/search', 'yahoo.com/search', '/login', '/signup', '/signin', '/signin'];
+              // 1. Block known junk
+              const blackList = ['google.com/search', 'bing.com/search', 'yahoo.com/search', '/login', '/signup', '/signin'];
               if (blackList.some(bl => nLink.includes(bl))) return false;
 
-              // 2. Strict Exact match check (Against search evidence - highest confidence)
+              // 2. Strict Exact match check
               if (evidenceUrls.has(nLink)) return true;
 
-              // 3. Pattern match (Trusted platforms only if they look like direct courses)
+              // 3. Pattern match (Trusted platforms)
               const isDirect = isDirectCourseLink(link);
               if (isDirect) return true;
 
-              // 4. Hallucination Block: If it's a domain match but NOT in evidence and NOT a verified direct link, we reject it to avoid 404s.
-              // We removed the loose domain match here to prevent AI-invented URLs.
+              // 4. Domain match (Trust if we have ANY evidence from this domain)
+              // Strict exclusion: Courses MUST be exact matches or direct links. Do not allow loose domain matches for courses.
+              if (type !== 'Courses' && linkDomain && evidenceDomains.has(linkDomain)) return true;
               
               return false;
             });
@@ -580,6 +618,9 @@ Do not include markdown or conversational text anywhere. Ensure all JSON keys ar
 
           normalized.courses = verifyLinks(normalized.courses, 'Courses');
           normalized.youtubeVideos = verifyLinks(normalized.youtubeVideos, 'Videos');
+          normalized.resources = verifyLinks(normalized.resources, 'Resources');
+          normalized.practiceProjects = verifyLinks(normalized.practiceProjects, 'Projects');
+          normalized.tools = verifyLinks(normalized.tools, 'Tools');
         }
         parsedData = normalizeAIResponse(normalized, mode);
         // Explicitly override fallback metadata since AI succeeded

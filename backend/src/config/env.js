@@ -45,6 +45,13 @@ export const config = {
   posthogApiKey: process.env.POSTHOG_API_KEY,
   keepAliveInterval: parseInt(process.env.KEEP_ALIVE_INTERVAL || '600000'),
   missionAutoAdvanceThreshold: parseInt(process.env.MISSION_AUTO_ADVANCE_THRESHOLD || '50'),
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY || '',
+  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
+  stripeProPriceId: process.env.STRIPE_PRO_PRICE_ID || '',
+  stripeProPriceAmount: Number(process.env.STRIPE_PRO_PRICE_AMOUNT || 12),
+  stripeCheckoutSuccessUrl: process.env.STRIPE_CHECKOUT_SUCCESS_URL || '',
+  stripeCheckoutCancelUrl: process.env.STRIPE_CHECKOUT_CANCEL_URL || '',
+  stripeBillingReturnUrl: process.env.STRIPE_BILLING_RETURN_URL || '',
 };
 
 export default config;

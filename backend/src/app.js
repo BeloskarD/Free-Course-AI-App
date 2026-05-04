@@ -39,6 +39,7 @@ import networkInsightRoutes from './routes/networkInsight.routes.js';
 import outreachGeneratorRoutes from './routes/outreachGenerator.routes.js';
 import interviewPrepRoutes from './routes/interviewPrep.routes.js';
 import careerRoutes from './routes/career.routes.js';
+import billingRoutes from './routes/billing.routes.js';
 
 
 const app = express();
@@ -62,6 +63,7 @@ Sentry.init({
 // ── CORE MIDDLEWARE ──
 app.use(requestIdMiddleware);
 app.use(compression());
+app.use('/api/billing/webhook', express.raw({ limit: '2mb', type: 'application/json' }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
@@ -155,6 +157,7 @@ app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/career', careerRoutes);
+app.use('/api/billing', billingRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/youtube', youtubeRoutes);
 app.use('/api/skill-analysis', skillAnalysisRoutes);

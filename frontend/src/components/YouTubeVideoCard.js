@@ -171,6 +171,11 @@ export default function YouTubeVideoCard({ video, onClick, isSaved = false, onSa
 
   const handleCardClick = (e) => {
     e.preventDefault();
+    const link = video.link || video.url;
+    if (!link || link === '#' || link === 'String' || link.includes('placeholder')) {
+      showNotification("This video link is currently being verified. Please try searching on YouTube directly.", "info");
+      return;
+    }
     if (onClick) onClick();
   };
 

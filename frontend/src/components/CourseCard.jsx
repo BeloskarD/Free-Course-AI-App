@@ -418,12 +418,18 @@ export default function CourseCard({
 
                  const targetUrl = getBestLink();
                  // Validate that the link is a direct course link, not a search/category page
-                 if (targetUrl && isDirectCourseLink(targetUrl)) {
+                 if (targetUrl) {
                    window.open(targetUrl, '_blank', 'noopener,noreferrer');
                  } else {
                    // Fallback to platform root to avoid 404/blank page
-                   const platformRoot = course.platform?.toLowerCase().includes('udemy') ? 'https://www.udemy.com' : 'https://www.coursera.org';
-                   window.open(platformRoot, '_blank', 'noopener,noreferrer');
+                   const platform = course.platform?.toLowerCase() || '';
+                   let fallback = 'https://www.coursera.org';
+                   if (platform.includes('udemy')) fallback = 'https://www.udemy.com';
+                   else if (platform.includes('edx')) fallback = 'https://www.edx.org';
+                   else if (platform.includes('pluralsight')) fallback = 'https://www.pluralsight.com';
+                   else if (platform.includes('simplilearn')) fallback = 'https://www.simplilearn.com';
+                   window.open(fallback, '_blank', 'noopener,noreferrer');
+                   
                  }
                }}
                className="relative w-full py-4 sm:py-4.5 lg:py-5 bg-[var(--site-text)] text-[var(--site-bg)] font-black rounded-xl lg:rounded-2xl text-[10px] sm:text-xs lg:text-xs uppercase tracking-[0.2em] transition-all duration-300 hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl overflow-hidden group/btn border border-transparent hover:border-[var(--site-text)]/20 cursor-pointer"

@@ -85,6 +85,16 @@ const userSchema = new mongoose.Schema(
 
     // Monetization & Growth
     subscriptionTier: { type: String, enum: ['free', 'pro'], default: 'free' },
+    billing: {
+      provider: { type: String, default: null },
+      stripeCustomerId: { type: String, default: null },
+      stripeSubscriptionId: { type: String, default: null },
+      subscriptionStatus: { type: String, default: 'inactive' },
+      subscriptionPlan: { type: String, default: 'free' },
+      currentPeriodEnd: { type: Date, default: null },
+      cancelAtPeriodEnd: { type: Boolean, default: false },
+      lastPaymentAt: { type: Date, default: null },
+    },
     onboardingStatus: {
       roleDefined: { type: Boolean, default: false },
       skillsDefined: { type: Boolean, default: false }

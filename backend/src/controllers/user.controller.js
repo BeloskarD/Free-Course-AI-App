@@ -20,6 +20,13 @@ export const getProfile = async (req, res) => {
                 createdAt: user.createdAt,
                 onboardingStatus: user.onboardingStatus || { roleDefined: false, skillsDefined: false },
                 subscriptionTier: user.subscriptionTier || 'free',
+                billing: {
+                    provider: user.billing?.provider || null,
+                    subscriptionStatus: user.billing?.subscriptionStatus || 'inactive',
+                    subscriptionPlan: user.billing?.subscriptionPlan || user.subscriptionTier || 'free',
+                    currentPeriodEnd: user.billing?.currentPeriodEnd || null,
+                    cancelAtPeriodEnd: Boolean(user.billing?.cancelAtPeriodEnd),
+                },
             }
         });
     } catch (error) {
