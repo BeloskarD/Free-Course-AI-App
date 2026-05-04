@@ -119,6 +119,18 @@ const CONTEXTUAL_ACTIONS = {
         { text: "How do I qualify for these roles?", icon: "✅" },
         { text: "Save interesting opportunities", icon: "🔖" },
     ],
+    '/settings/billing': [
+        { text: "Explain my subscription plan", icon: "💳" },
+        { text: "How do I upgrade to Pro?", icon: "🚀" },
+        { text: "View pricing options", icon: "💰" },
+        { text: "What are the benefits of Pro?", icon: "✨" },
+    ],
+    '/pricing': [
+        { text: "Compare plans", icon: "⚖️" },
+        { text: "What is included in Pro?", icon: "💎" },
+        { text: "Is there a free trial?", icon: "🆓" },
+        { text: "Help me choose a plan", icon: "🤔" },
+    ],
 };
 
 // Get page-friendly name for context indicator
@@ -138,6 +150,8 @@ const getPageName = (pathname) => {
         '/wellbeing': 'Wellbeing',
         '/career-acceleration': 'Career Hub',
         '/opportunity-radar': 'Opportunity Radar',
+        '/settings/billing': 'Billing Settings',
+        '/pricing': 'Pricing',
     };
     // Handle dynamic routes like /missions/[id]
     if (pathname?.startsWith('/missions/')) {
@@ -279,6 +293,14 @@ export default function AICompanion() {
     });
 
     const activeMissions = activeMissionsResponse?.data || [];
+
+    // Fetch billing/subscription status - NEW
+    const { data: subscriptionData } = useQuery({
+        queryKey: ['billing-subscription', user?.id],
+        queryFn: () => api.getSubscriptionStatus(token),
+        enabled: !!user && !!token,
+        staleTime: 1000 * 60 * 10, // 10 minutes
+    });
 
     // 🤗 Proactive AI Check-in: Detect returning learners (3+ days away)
     useEffect(() => {
@@ -568,7 +590,9 @@ export default function AICompanion() {
                         name: s.name,
                         level: s.level,
                         progress: s.progress
-                    }))
+                    })),
+                    // 💳 Billing Context
+                    subscription: subscriptionData?.subscription || { tier: 'free', status: 'active' }
                 }
             };
 

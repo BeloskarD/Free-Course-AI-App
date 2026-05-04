@@ -62,6 +62,18 @@ function PricingContent() {
   return (
     <main className="min-h-screen bg-[var(--site-bg)] text-[var(--site-text)] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       <div className="max-w-[1600px] mx-auto">
+        <div className="mb-10">
+          <Link
+            href="/settings/billing"
+            className="inline-flex items-center gap-2.5 text-[11px] font-extra-black uppercase tracking-[0.3em] text-[var(--site-text-muted)] hover:text-[var(--accent-primary)] transition-all duration-300 group"
+          >
+            <div className="w-8 h-8 rounded-xl bg-[var(--site-text)]/5 flex items-center justify-center group-hover:bg-[var(--accent-primary)]/10 transition-colors">
+              <span className="group-hover:-translate-x-0.5 transition-transform">←</span>
+            </div>
+            Back to settings
+          </Link>
+        </div>
+        
         <div className="text-center max-w-4xl mx-auto mb-10 sm:mb-14 px-1">
           <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full border border-[var(--card-border)] bg-[var(--card-bg)] text-[10px] font-black uppercase tracking-[0.3em] mb-6">
             <ShieldCheck size={16} className="text-[var(--accent-primary)]" /> Zeeklect Pro

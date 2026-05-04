@@ -113,7 +113,13 @@ H) If your answer is about CAREER PLANNING, ROADMAPS, or CAREER HUB:
 I) If your answer is about LEARNING PLAN or DASHBOARD overview:
    - Navigate to: "[NAVIGATE:/dashboard]"
 
-J) If you're just explaining a concept without suggesting action, DO NOT append navigation.
+L) If your answer is about BILLING, SUBSCRIPTION, or MANAGING PAYMENTS:
+   - Navigate to: "[NAVIGATE:/settings/billing]"
+
+M) If your answer is about UPGRADING TO PRO or VIEWING PRICING:
+   - Navigate to: "[NAVIGATE:/pricing]"
+
+N) If you're just explaining a concept without suggesting action, DO NOT append navigation.
 
 NAVIGATION PRIORITY:
 1. Learning a skill/topic → /ai-intelligence?q=<topic>&autoSearch=true
@@ -122,7 +128,9 @@ NAVIGATION PRIORITY:
 4. Watching videos → /youtube?q=<topic>
 5. Career Planning → /career-acceleration
 6. Viewing progress → /momentum
-7. No action suggested → No navigation
+7. Upgrading/Pricing → /pricing
+8. Managing Billing → /settings/billing
+9. No action suggested → No navigation
 
 EXAMPLES:
 - "Help me complete today's tasks" + Answer mentions learning React
@@ -317,6 +325,18 @@ function buildContextMessage(conversation, userContext, isLoggedIn) {
         if (career.radarMatches?.length > 0) {
             const matches = career.radarMatches.map(o => `${o.title} (${o.matchScore}% match)`).join('; ');
             contextInfo += `OPPORTUNITY RADAR: Top matches include: ${matches}. `;
+        }
+    }
+
+    // 💳 Billing & Subscription Data - NEW
+    const subscription = userContext?.subscription;
+    if (subscription) {
+        hasUserData = true;
+        contextInfo += `\nBILLING STATUS: Plan is "${subscription.tier || 'free'}", Status is "${subscription.status || 'active'}". `;
+        if (subscription.tier === 'pro') {
+            contextInfo += `User is a PRO member. Be extra helpful and appreciative of their support! `;
+        } else {
+            contextInfo += `User is on the FREE tier. You can mention Pro benefits if they ask about limits or advanced features. `;
         }
     }
 

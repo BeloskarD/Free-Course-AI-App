@@ -23,6 +23,11 @@ export const api = {
     if (!contentType || !contentType.includes("application/json")) {
       const text = await res.text();
       console.error(`❌ [API Error] Expected JSON from ${url} but got ${contentType || 'blank'}:`, text.substring(0, 100));
+      
+      if (res.status === 503) {
+        throw new Error("Billing service is currently unavailable. This usually means the backend is missing Stripe configuration (API Keys).");
+      }
+      
       throw new Error(`Server returned invalid response format (${res.status}). Please check if the backend is running.`);
     }
     return await res.json();

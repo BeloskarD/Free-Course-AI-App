@@ -100,7 +100,9 @@ export default function BillingSettingsPage() {
                   </div>
                   <div className="rounded-3xl border border-[var(--card-border)] bg-[var(--site-text)]/5 p-5">
                     <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--site-text-muted)] mb-2">Status</p>
-                    <p className="text-2xl font-black capitalize">{subscription?.status || 'inactive'}</p>
+                    <p className="text-2xl font-black capitalize">
+                      {subscription?.tier === 'free' ? 'Active' : (subscription?.status || 'inactive')}
+                    </p>
                   </div>
                 </div>
 

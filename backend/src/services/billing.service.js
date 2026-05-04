@@ -15,7 +15,6 @@ let stripeClient;
 
 const configurationFields = [
   'stripeSecretKey',
-  'stripeWebhookSecret',
   'stripeProPriceId',
   'stripeCheckoutSuccessUrl',
   'stripeCheckoutCancelUrl',
@@ -31,7 +30,9 @@ class BillingService {
   ensureConfigured() {
     const missing = configurationFields.filter((field) => !config[field]);
     if (missing.length > 0) {
-      const error = new Error(`Billing is not configured. Missing: ${missing.join(', ')}`);
+      const msg = `Billing is not configured. Missing: ${missing.join(', ')}`;
+      logger.error({ missing }, '[Billing] Service configuration check failed');
+      const error = new Error(msg);
       error.statusCode = 503;
       throw error;
     }
@@ -159,6 +160,11 @@ class BillingService {
   }
 
   async verifyWebhookEvent(signature, rawBody) {
+    if (!config.stripeWebhookSecret) {
+      const error = new Error('Stripe Webhook Secret is not configured. Webhook verification failed.');
+      error.statusCode = 503;
+      throw error;
+    }
     const stripe = this.getStripeClient();
     return stripe.webhooks.constructEvent(rawBody, signature, config.stripeWebhookSecret);
   }
