@@ -155,11 +155,11 @@ app.use(passport.initialize());
 // ── STRIPE SUCCESS/CANCEL REDIRECTS ──
 // These handle browser redirects from Stripe back to the frontend
 app.get('/billing/success', (req, res) => {
-  res.redirect(`${config.frontendUrl}/settings/billing?status=success`);
+  res.redirect(`${config.frontendUrl}/billing/success`);
 });
 
 app.get('/billing/cancel', (req, res) => {
-  res.redirect(`${config.frontendUrl}/pricing?status=cancel`);
+  res.redirect(`${config.frontendUrl}/billing/cancel`);
 });
 
 // ── API ROUTES ──
