@@ -152,6 +152,16 @@ app.use('/api/intelligence', aiLimiter);
 // ── AUTHENTICATION ──
 app.use(passport.initialize());
 
+// ── STRIPE SUCCESS/CANCEL REDIRECTS ──
+// These handle browser redirects from Stripe back to the frontend
+app.get('/billing/success', (req, res) => {
+  res.redirect(`${config.frontendUrl}/settings/billing?status=success`);
+});
+
+app.get('/billing/cancel', (req, res) => {
+  res.redirect(`${config.frontendUrl}/pricing?status=cancel`);
+});
+
 // ── API ROUTES ──
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
