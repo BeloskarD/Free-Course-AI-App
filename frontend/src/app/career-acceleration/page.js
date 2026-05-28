@@ -13,6 +13,7 @@ import {
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import Skeleton, { StatsSkeleton } from "../../components/ui/Skeleton";
+import { BlurCard } from "../../components/monetization/BlurCard";
 
 // ── Metric Card ──
 function MetricCard({ icon: Icon, label, value, sub, color, trend }) {
@@ -130,9 +131,9 @@ function CareerNavigationInsight({ insight, token, user }) {
     const [outreachMessages, setOutreachMessages] = useState(null);
     const [copiedIdx, setCopiedIdx] = useState(-1);
 
-    const careerInsight = insight?.careerInsight;
-    const activated = insight?.activated;
-    const readiness = insight?.readiness || 0;
+    const careerInsight = insight?.careerInsight || insight?.data?.careerInsight;
+    const activated = insight?.activated ?? insight?.data?.activated;
+    const readiness = insight?.readiness ?? insight?.data?.readiness ?? 0;
 
     const handleGenerateOutreach = useCallback(async () => {
         if (!careerInsight?.outreachReady || !careerInsight?.warmPath) return;
@@ -183,7 +184,7 @@ function CareerNavigationInsight({ insight, token, user }) {
                     <div className="text-center py-6 sm:py-8">
                         <Lock size={28} className="mx-auto text-[var(--site-text-muted)] opacity-30 mb-3" />
                         <p className="text-xs sm:text-sm font-bold text-[var(--site-text-muted)] max-w-xs mx-auto leading-relaxed">
-                            {insight?.reason || 'Build momentum to unlock career navigation insights.'}
+                            {insight?.reason || insight?.data?.reason || 'Build momentum to unlock career navigation insights.'}
                         </p>
                         <div className="mt-4 flex justify-center">
                             <div className={`px-4 py-2 rounded-xl bg-gradient-to-r ${readinessBg} ring-1 ${readinessRing}`}>
@@ -473,9 +474,11 @@ export default function CareerAccelerationPage() {
         retry: 1,
     });
 
-    const overview = overviewRes?.data;
-    const interventions = interventionsRes?.data || [];
-    const networkInsight = insightRes?.data || null;
+    const overview = overviewRes; 
+    const interventions = interventionsRes?.interventions || [];
+    const networkInsight = insightRes; 
+
+
 
     // ── Recalibrate ──
     const handleRecalibrate = async () => {
@@ -671,10 +674,24 @@ export default function CareerAccelerationPage() {
                             </Link>
                         </div>
                         <div className="space-y-2 sm:space-y-3">
-                            {opportunities.slice(0, 5).map((opp, i) => (
+                            {opportunities.map((opp, i) => (
                                 <OpportunityMini key={i} opportunity={opp} />
                             ))}
-                            {opportunities.length === 0 && (
+                            {overview?.locked && (
+                                <>
+                                    {[1, 2].map((i) => (
+                                        <div key={`blur-${i}`} className="animate-in fade-in zoom-in duration-500">
+                                            <BlurCard 
+                                                title="High Match Opportunity" 
+                                                tier="pro" 
+                                                featureName="radar_matches"
+                                                compact={true}
+                                            />
+                                        </div>
+                                    ))}
+                                </>
+                            )}
+                            {opportunities.length === 0 && !overview?.locked && (
                                 <div className="text-center py-8 sm:py-12">
                                     <Globe size={32} className="mx-auto text-[var(--site-text-muted)] opacity-30 mb-3" />
                                     <p className="text-xs font-bold text-[var(--site-text-muted)] opacity-50">No opportunities detected yet.</p>

@@ -19,28 +19,24 @@ export async function getNetworkInsight(req, res) {
     try {
         const userId = req.userId;
 
-        // 1. Get reinforcement status for readiness check
-        const reinforcement = await reinforcementService.getStatus(userId);
-        const momentumScore = reinforcement?.momentum?.score || 0;
-        const readinessScore = Math.round(momentumScore * 100);
-        const highEntropyCount = reinforcement?.entropy?.highEntropyCount || 0;
+        // 1. Get comprehensive hiring readiness score
+        const readinessEngine = (await import('../services/hiringReadinessEngine.js')).default;
+        const readiness = await readinessEngine.calculateScore(userId);
+        const readinessScore = readiness.score;
+        
+        // 2. Check activation conditions (v3 threshold: 40% readiness for early insights)
+        const isActivated = readinessScore >= 40;
 
-        // 2. Check activation conditions
-        const isActivated = readinessScore >= 60 && highEntropyCount <= 3 && momentumScore >= 0.4;
 
         if (!isActivated) {
             return res.json({
                 success: true,
-                data: {
-                    activated: false,
-                    readiness: readinessScore,
-                    reason: readinessScore < 60
-                        ? 'Readiness below 60%. Keep building skills and momentum.'
-                        : highEntropyCount > 3
-                            ? 'Too many skills are fading. Practice to stabilize entropy.'
-                            : 'Momentum is not yet stable. Build consistency first.',
-                    careerInsight: null
-                }
+                activated: false,
+                readiness: readinessScore,
+                reason: readinessScore < 40
+                    ? `Readiness at ${readinessScore}%. Reach 40% by completing skill validations and projects.`
+                    : 'Momentum is not yet stable. Build consistency first.',
+                careerInsight: null
             });
         }
 
@@ -51,12 +47,10 @@ export async function getNetworkInsight(req, res) {
         if (!topOpp) {
             return res.json({
                 success: true,
-                data: {
-                    activated: true,
-                    readiness: readinessScore,
-                    reason: 'No opportunity matches found. Run the opportunity scanner first.',
-                    careerInsight: null
-                }
+                activated: true,
+                readiness: readinessScore,
+                reason: 'No opportunity matches found. Run the opportunity scanner first.',
+                careerInsight: null
             });
         }
 
@@ -113,11 +107,11 @@ export async function getNetworkInsight(req, res) {
             cluster: cluster.replace(/_/g, ' '),
             startupsHiring: hiringSignals.length,
             warmPath: bestWarmPath ? {
-                name: bestWarmPath.name,
-                role: bestWarmPath.role,
-                company: bestWarmPath.company,
-                connectionDegree: bestWarmPath.connectionDegree,
-                leverageScore: bestWarmPath.leverageScore
+                name: bestWarmPath.name || 'Anonymous Connection',
+                role: bestWarmPath.role || 'Industry Professional',
+                company: bestWarmPath.company || 'Confidential Company',
+                connectionDegree: bestWarmPath.connectionDegree || 3,
+                leverageScore: bestWarmPath.leverageScore || 0
             } : null,
             networkScore: networkData.networkScore,
             totalWarmPaths: networkData.warmPaths.length,
@@ -159,13 +153,27 @@ export async function getNetworkInsight(req, res) {
             ).catch(err => console.error('[NetworkInsight] DB update failed:', err.message));
         }
 
+        const responseData = {
+            activated: true,
+            readiness: readinessScore,
+            careerInsight
+        };
+
+        // Response Shaping for Network Intelligence
+        if (req.entitlements && req.entitlements.tier !== 'career+') {
+            const { shapeGatedResponse, getCuriosityHint } = await import('../utils/response.js');
+            const shaped = shapeGatedResponse(responseData, req.entitlements, {
+                featureArea: 'networkInsight',
+                keysToLock: ['warmPath', 'hiringManagers', 'domainExperts', 'totalWarmPaths'],
+                upgradeHint: 'Unlock full network intelligence and warm connection paths with Career+.',
+                lockedMessage: getCuriosityHint('networkInsight')
+            });
+            return res.json({ success: true, ...shaped });
+        }
+
         res.json({
             success: true,
-            data: {
-                activated: true,
-                readiness: readinessScore,
-                careerInsight
-            }
+            ...responseData
         });
 
     } catch (error) {

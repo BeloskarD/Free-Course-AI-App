@@ -1,6 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: ['lucide-react'],
+  allowedDevOrigins: [
+    '192.168.0.219',
+    '192.168.0.219:3000',
+    '192.168.0.219.nip.io',
+    '192.168.0.219.nip.io:3000',
+    'localhost:3000'
+  ],
   images: {
     remotePatterns: [
       {
@@ -70,18 +77,25 @@ const nextConfig = {
       },
     ];
   },
-  // Optimize for production
-  compress: true,
-  poweredByHeader: false,
-  allowedDevOrigins: [
-    '192.168.0.219',
-    '192.168.0.219:3000',
-    'http://192.168.0.219:3000',
-    'http://192.168.0.219.nip.io:3000',
-    '192.168.0.219.nip.io:3000',
-    'localhost:3000',
-    'http://localhost:3000'
-  ]
+  experimental: {
+    serverActions: {
+      allowedOrigins: [
+        '192.168.0.219',
+        '192.168.0.219:3000',
+        '192.168.0.219:3001',
+        'http://192.168.0.219:3000',
+        'http://192.168.0.219:3001',
+        'http://192.168.0.219.nip.io:3000',
+        'http://192.168.0.219.nip.io:3001',
+        '192.168.0.219.nip.io:3000',
+        '192.168.0.219.nip.io:3001',
+        'localhost:3000',
+        'localhost:3001',
+        'http://localhost:3000',
+        'http://localhost:3001'
+      ]
+    }
+  }
 };
 
 export default nextConfig;

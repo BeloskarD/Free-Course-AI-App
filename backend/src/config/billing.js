@@ -10,12 +10,18 @@ export const BILLING_PLANS = {
     label: 'Free',
     interval: null,
     stripePriceId: null,
-    limits: {
-      validation_limit: 3,
+    entitlements: {
+      chatDepth: 'basic',
+      insightDetail: 'partial',
+      resumeAccess: 'limited',
+      searchLimit: 10, // daily
+      chatLimit: 5, // daily
+      validationLimit: 3, // weekly
     },
     features: {
       advancedInsights: false,
       billingPortal: false,
+      radarAccess: false,
     },
   },
   pro: {
@@ -23,12 +29,39 @@ export const BILLING_PLANS = {
     label: 'Pro',
     interval: 'month',
     stripePriceId: config.stripeProPriceId || null,
-    limits: {
-      validation_limit: Number.POSITIVE_INFINITY,
+    entitlements: {
+      chatDepth: 'full',
+      insightDetail: 'full',
+      resumeAccess: 'full',
+      searchLimit: 100,
+      chatLimit: 50,
+      validationLimit: 20,
     },
     features: {
       advancedInsights: true,
       billingPortal: true,
+      radarAccess: true,
+    },
+  },
+  career_plus: {
+    id: 'career_plus',
+    label: 'Career+',
+    interval: 'month',
+    stripePriceId: config.stripeCareerPlusPriceId || null, // Assuming this will be added to env
+    entitlements: {
+      chatDepth: 'expert',
+      insightDetail: 'full',
+      resumeAccess: 'unlimited',
+      searchLimit: 500,
+      chatLimit: 200,
+      validationLimit: 100,
+    },
+    features: {
+      advancedInsights: true,
+      billingPortal: true,
+      radarAccess: true,
+      personalizedOutreach: true,
+      networkIntelligence: true,
     },
   },
 };
@@ -48,9 +81,9 @@ export function resolvePlanFromSubscription(status, priceId) {
   return matchedPlan?.id || 'pro';
 }
 
-export function getFeatureLimit(planId, feature) {
+export function getEntitlement(planId, entitlement) {
   const plan = getPlanConfig(planId);
-  return plan.limits?.[feature] ?? 0;
+  return plan.entitlements?.[entitlement];
 }
 
 export function hasFeatureAccess(planId, feature) {

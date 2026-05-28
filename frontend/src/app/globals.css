@@ -614,3 +614,120 @@ textarea:focus-visible {
   box-shadow: 0 20px 40px -20px rgba(99, 102, 241, 0.2);
   transform: translateY(-2px);
 }
+
+/* ──────────────────────────────────────────────
+   HIDE BROWSER NATIVE PASSWORD REVEAL BUTTONS
+   (To prevent double eye icon side-by-side with custom toggle buttons)
+   ────────────────────────────────────────────── */
+/* Hide Microsoft Edge native password reveal button */
+input::-ms-reveal {
+  display: none !important;
+}
+input::-ms-clear {
+  display: none !important;
+}
+
+/* Hide WebKit native credentials & autocomplete fillers (Chrome, Safari, etc.) */
+input::-webkit-credentials-auto-fill-button {
+  visibility: hidden !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  right: 0 !important;
+}
+
+/* ========================================
+   PREMIUM GLASSMORPHIC THEME & GLOWS (Pro/Career+)
+   ======================================== */
+.theme-glassmorphic {
+  --glass-bg: rgba(255, 255, 255, 0.4);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --glass-glow-1: rgba(14, 165, 233, 0.08); /* Neon Cyan */
+  --glass-glow-2: rgba(168, 85, 247, 0.08); /* Neon Purple */
+  background: radial-gradient(circle at 10% 20%, var(--glass-glow-1) 0%, transparent 40%),
+              radial-gradient(circle at 90% 80%, var(--glass-glow-2) 0%, transparent 40%),
+              #f8fafb;
+}
+
+.dark .theme-glassmorphic {
+  --glass-bg: rgba(15, 15, 15, 0.4);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-glow-1: rgba(6, 182, 212, 0.12); /* Cyan */
+  --glass-glow-2: rgba(139, 92, 246, 0.12); /* Violet */
+  background: radial-gradient(circle at 10% 20%, var(--glass-glow-1) 0%, transparent 45%),
+              radial-gradient(circle at 90% 80%, var(--glass-glow-2) 0%, transparent 45%),
+              #050505;
+}
+
+/* Translucent Card Overlays for Glassmorphic Theme */
+.theme-glassmorphic .glass-card {
+  backdrop-filter: blur(25px) saturate(200%);
+  background-color: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: 
+    0 8px 32px 0 rgba(31, 38, 135, 0.03),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+  border-radius: 1.5rem;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.theme-glassmorphic .glass-card:hover {
+  border-color: rgba(99, 102, 241, 0.35);
+  box-shadow: 
+    0 12px 40px 0 rgba(99, 102, 241, 0.12),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+  transform: translateY(-4px);
+}
+
+/* Telemetry Holographic Skill Badge styles */
+@keyframes holo-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.holographic-badge {
+  background: linear-gradient(
+    90deg, 
+    #0ea5e9, 
+    #6366f1, 
+    #a855f7, 
+    #ec4899, 
+    #0ea5e9
+  );
+  background-size: 400% 400%;
+  animation: holo-shimmer 6s ease infinite;
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.holographic-badge::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 50%; height: 100%;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.35) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: skewX(-25deg);
+  transition: 0.75s;
+}
+
+.holographic-badge:hover::before {
+  left: 150%;
+}
+
+.holographic-badge:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 0 25px rgba(168, 85, 247, 0.5);
+}

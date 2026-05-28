@@ -21,7 +21,7 @@ const HiringReadinessWidget = ({ onBoost }) => {
 
   const { data: readiness, isLoading } = useQuery({
     queryKey: ["hiring-readiness"],
-    queryFn: () => api.getHiringReadiness(token),
+    queryFn: () => api.getCareerReadiness(token),
     enabled: !!token,
   });
 
@@ -33,10 +33,10 @@ const HiringReadinessWidget = ({ onBoost }) => {
 
   if (isLoading) return <div className="h-64 animate-pulse bg-indigo-500/5 rounded-[2.5rem]" />;
 
-  const data = readiness?.data;
-  if (!data) return null;
+  const data = readiness;
+  if (!data || !data.success) return null;
 
-  const radarData = radarResponse?.data;
+  const radarData = radarResponse;
   const score = Math.min(100, Math.round(data.score || 0));
   const missingItems = data.missingComponents || [];
 

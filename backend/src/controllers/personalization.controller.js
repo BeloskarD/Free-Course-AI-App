@@ -1,6 +1,7 @@
 import personalizationService from '../services/personalizationService.js';
 import wellbeingService from '../services/wellbeingService.js';
 import cacheUtils from '../utils/cacheUtils.js';
+import { shapeGatedResponse, getCuriosityHint } from '../utils/response.js';
 
 /**
  * GET /api/personalization/profile
@@ -110,6 +111,19 @@ export async function getSkillGraph(req, res) {
         } else {
             console.log(`⚡ [Cache] Serving SkillGraph for ${req.userId}`);
         }
+
+        // Progressive reveal for free users
+        if (req.entitlements && req.entitlements.tier === 'free') {
+            const shaped = shapeGatedResponse(data, req.entitlements, {
+                partialCount: 5,
+                keysToLock: ['masteryScore', 'entropyRate', 'decayPrediction', 'practiceHistory'],
+                featureArea: 'graphEngine',
+                upgradeHint: 'Unlock full skill mastery analysis with Pro.',
+                lockedMessage: getCuriosityHint('graphEngine')
+            });
+            return res.json(shaped);
+        }
+
         res.json({ success: true, ...data });
     } catch (error) {
         console.error('❌ Skill Graph Error:', error);
@@ -129,6 +143,22 @@ export async function getReadiness(req, res) {
             data = await personalizationService.getReadiness(req.userId);
             cacheUtils.setCache(cacheKey, data, 300); // Cache for 5 minutes
         }
+
+        // Progressive reveal for free users
+        if (req.entitlements && req.entitlements.tier === 'free') {
+            const shaped = shapeGatedResponse(data, req.entitlements, {
+                partialCount: 2,
+                keysToLock: [
+                    'detailedBreakdown', 'strategicRecommendations', 'gapAnalysis',
+                    'actionPlan', 'hiringProbability', 'competitorBenchmark'
+                ],
+                featureArea: 'readiness',
+                upgradeHint: 'Reveal the exact skills blocking your next career move.',
+                lockedMessage: getCuriosityHint('readiness')
+            });
+            return res.json(shaped);
+        }
+
         res.json({ success: true, ...data });
     } catch (error) {
         console.error('❌ Readiness Score Error:', error);

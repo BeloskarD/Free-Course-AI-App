@@ -5,7 +5,7 @@ const activityLogSchema = new mongoose.Schema({
   action: { type: String, required: true }, // e.g. "view_timeline", "validate_skill"
   feature: { type: String }, // e.g. "career_timeline", "skill_validation"
   metadata: { type: mongoose.Schema.Types.Mixed },
-  userTier: { type: String, enum: ['free', 'pro'] },
+  userTier: { type: String, enum: ['free', 'pro', 'career_plus'] },
   currentScore: { type: Number },
 }, { timestamps: true });
 
@@ -18,7 +18,7 @@ const feedbackSchema = new mongoose.Schema({
   comment: { type: String },
   userState: {
     score: Number,
-    tier: { type: String, enum: ['free', 'pro'] }
+    tier: { type: String, enum: ['free', 'pro', 'career_plus'] }
   }
 }, { timestamps: true });
 

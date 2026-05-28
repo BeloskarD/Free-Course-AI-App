@@ -40,6 +40,7 @@ import { useEffect, useState } from "react";
 import Skeleton, { StatsSkeleton } from "../../components/ui/Skeleton";
 import { motion } from "framer-motion";
 import ResumeBuilder from "../../components/personalization/ResumeBuilder";
+import PortfolioManager from "../../components/personalization/PortfolioManager";
 import HiringReadinessWidget from "../../components/career/HiringReadinessWidget";
 import CareerTimelineVisual from "../../components/career/CareerTimelineVisual";
 import NotificationBell from "../../components/career/NotificationBell";
@@ -52,13 +53,15 @@ import TodayActionsWidget from "../../components/career/TodayActionsWidget";
 
 function DashboardPageContent() {
   const { user, token, logout, refreshUser } = useAuth();
-  const [activeTab, setActiveTab] = useState("overview"); // overview, portfolio
+  const [activeTab, setActiveTab] = useState("overview"); // overview, resume, portfolio
   const [deletingId, setDeletingId] = useState(null);
   const searchParams = useSearchParams();
   const tabParam = searchParams.get('tab');
 
   useEffect(() => {
-    if (tabParam === 'portfolio') {
+    if (tabParam === 'resume') {
+      setActiveTab('resume');
+    } else if (tabParam === 'portfolio') {
       setActiveTab('portfolio');
     } else if (tabParam === 'overview') {
       setActiveTab('overview');
@@ -354,6 +357,8 @@ function DashboardPageContent() {
         <div className="relative z-20 flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
           {activeTab === 'overview' ? (
             <Breadcrumb currentPage="Dashboard" currentIcon={LayoutDashboard} />
+          ) : activeTab === 'portfolio' ? (
+            <Breadcrumb currentPage="Portfolio Editor" currentIcon={Layout} homeLabel="Dashboard" homeIcon={LayoutDashboard} onHomeClick={() => setActiveTab('overview')} />
           ) : (
             <Breadcrumb currentPage="AI Resume Builder" currentIcon={Sparkles} homeLabel="Dashboard" homeIcon={LayoutDashboard} onHomeClick={() => setActiveTab('overview')} />
           )}
@@ -362,18 +367,29 @@ function DashboardPageContent() {
               <button onClick={() => { setActiveTab('overview'); router.push('/dashboard', { scroll: false }); }} className={`px-6 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'overview' ? 'bg-white dark:bg-slate-800 text-[var(--accent-primary)] shadow-lg scale-105' : 'text-[var(--site-text-muted)] hover:text-[var(--site-text)]'}`}>
                 <LayoutDashboard size={16} /> OVERVIEW
               </button>
-              <button onClick={() => { setActiveTab('portfolio'); router.push('/dashboard?tab=portfolio', { scroll: false }); }} className={`px-6 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'portfolio' ? 'bg-white dark:bg-slate-800 text-indigo-500 shadow-lg scale-105' : 'text-[var(--site-text-muted)] hover:text-[var(--site-text)]'}`}>
+              <button onClick={() => { setActiveTab('resume'); router.push('/dashboard?tab=resume', { scroll: false }); }} className={`px-6 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'resume' ? 'bg-white dark:bg-slate-800 text-indigo-500 shadow-lg scale-105' : 'text-[var(--site-text-muted)] hover:text-[var(--site-text)]'}`}>
                 <Sparkles size={16} /> AI RESUME BUILDER
+              </button>
+              <button onClick={() => { setActiveTab('portfolio'); router.push('/dashboard?tab=portfolio', { scroll: false }); }} className={`px-6 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'portfolio' ? 'bg-white dark:bg-slate-800 text-emerald-500 shadow-lg scale-105' : 'text-[var(--site-text-muted)] hover:text-[var(--site-text)]'}`}>
+                <Layout size={16} /> PORTFOLIO EDITOR
               </button>
             </div>
 
         </div>
 
-        {activeTab === 'portfolio' ? (
+        {activeTab === 'resume' ? (
           <div className="animate-in fade-in slide-in-from-bottom duration-700">
             <ResumeBuilder token={token} initialData={{
               targetRole: learnerProfileData?.profile?.goals?.targetRole,
               portfolio: learnerProfileData?.profile?.portfolio,
+              masteredSkills: learnerProfileData?.profile?.masteredSkills
+            }} />
+          </div>
+        ) : activeTab === 'portfolio' ? (
+          <div className="animate-in fade-in slide-in-from-bottom duration-700">
+            <PortfolioManager token={token} initialData={{
+              portfolio: learnerProfileData?.profile?.portfolio,
+              targetRole: learnerProfileData?.profile?.goals?.targetRole,
               masteredSkills: learnerProfileData?.profile?.masteredSkills
             }} />
           </div>
@@ -407,9 +423,9 @@ function DashboardPageContent() {
                   <Link href="/settings/profile" className="px-8 py-5 bg-white/10 hover:bg-white text-white hover:text-indigo-800 rounded-3xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center gap-3 border border-white/20 hover:scale-105 shadow-xl">
                     <Settings size={18} strokeWidth={2.5} /> Settings
                   </Link>
-                  <button onClick={() => { setActiveTab('portfolio'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="px-8 py-5 bg-gradient-to-r from-emerald-400 to-teal-600 text-white rounded-3xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center gap-3 shadow-xl hover:scale-105">
+                  <Link href={`/portfolio/${user?.id}`} className="px-8 py-5 bg-gradient-to-r from-emerald-400 to-teal-600 text-white rounded-3xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center gap-3 shadow-xl hover:scale-105">
                     <Globe size={18} strokeWidth={2.5} /> View Portfolio
-                  </button>
+                  </Link>
                   <button onClick={logout} className="px-8 py-5 bg-white/10 hover:bg-rose-500 text-white rounded-3xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center gap-3 border border-white/20 hover:scale-105 shadow-xl">
                     <LogOut size={18} strokeWidth={2.5} /> Sign Out
                   </button>
@@ -426,7 +442,7 @@ function DashboardPageContent() {
 
             {user?.onboardingComplete && (
               <div className="mb-16 animate-in fade-in duration-1000">
-                <TodayActionsWidget actions={dailyActions?.data} isLoading={actionsLoading} />
+                <TodayActionsWidget actions={dailyActions?.actions} isLoading={actionsLoading} />
               </div>
             )}
 

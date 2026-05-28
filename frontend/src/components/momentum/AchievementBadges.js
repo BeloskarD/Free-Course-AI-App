@@ -40,50 +40,38 @@ const ACHIEVEMENT_ICONS = {
 // Achievement rarity levels
 const RARITY_CONFIG = {
   common: {
-    gradient: 'from-neutral-400 to-neutral-600',
-    glow: 'shadow-neutral-500/50',
-    border: 'border-neutral-300 dark:border-neutral-700',
-    bg: 'from-neutral-50 to-neutral-100 dark:from-neutral-900/40 dark:to-neutral-800/40',
-    textColor: 'text-neutral-700 dark:text-neutral-300',
+    gradient: 'from-slate-400 to-slate-600',
+    glow: 'shadow-slate-500/10',
+    border: 'border-slate-200 dark:border-slate-700/50',
+    textColor: 'text-slate-600 dark:text-slate-300',
     label: 'Common',
   },
   rare: {
-    gradient: 'from-blue-400 to-blue-600',
-    glow: 'shadow-blue-500/50',
-    border: 'border-blue-300 dark:border-blue-700',
-    bg: 'from-blue-50 to-blue-100 dark:from-blue-900/40 dark:to-blue-800/40',
+    gradient: 'from-blue-500 to-indigo-600',
+    glow: 'shadow-blue-500/20',
+    border: 'border-blue-200 dark:border-blue-700/50',
     textColor: 'text-blue-700 dark:text-blue-300',
     label: 'Rare',
   },
   epic: {
-    gradient: 'from-purple-400 to-purple-600',
-    glow: 'shadow-purple-500/50',
-    border: 'border-purple-300 dark:border-purple-700',
-    bg: 'from-purple-50 to-purple-100 dark:from-purple-900/40 dark:to-purple-800/40',
+    gradient: 'from-purple-500 to-pink-600',
+    glow: 'shadow-purple-500/20',
+    border: 'border-purple-200 dark:border-purple-700/50',
     textColor: 'text-purple-700 dark:text-purple-300',
-    label: 'Epic',
-  },
-  legendary: {
-    gradient: 'from-amber-400 via-orange-500 to-red-500',
-    glow: 'shadow-orange-500/50',
-    border: 'border-amber-300 dark:border-amber-700',
-    bg: 'from-amber-50 to-orange-100 dark:from-amber-900/40 dark:to-orange-800/40',
-    textColor: 'text-amber-800 dark:text-amber-200',
-    label: 'Legendary',
-    icon: Crown
-  },
-  epic: {
-    gradient: 'from-purple-400 to-pink-600',
-    glow: 'shadow-purple-500/50',
-    border: 'border-purple-300 dark:border-purple-700',
-    bg: 'from-purple-50 to-pink-100 dark:from-purple-900/40 dark:to-pink-800/40',
-    textColor: 'text-purple-800 dark:text-purple-200',
     label: 'Epic',
     icon: Sparkles
   },
+  legendary: {
+    gradient: 'from-amber-400 via-orange-500 to-red-500',
+    glow: 'shadow-orange-500/30',
+    border: 'border-amber-200 dark:border-amber-700/50',
+    textColor: 'text-amber-700 dark:text-amber-300',
+    label: 'Legendary',
+    icon: Crown
+  },
 };
 
-export default function AchievementBadges({ achievements }) {
+export default function AchievementBadges({ achievements, tier, entitlements }) {
   // Process achievements
   const processedAchievements = useMemo(() => {
     if (!achievements || !Array.isArray(achievements) || achievements.length === 0) {
@@ -106,56 +94,41 @@ export default function AchievementBadges({ achievements }) {
 
     const legendary = processedAchievements.filter(a => a.unlocked && a.rarity === 'legendary').length;
     const epic = processedAchievements.filter(a => a.unlocked && a.rarity === 'epic').length;
+    const rare = processedAchievements.filter(a => a.unlocked && a.rarity === 'rare').length;
 
-    return { total, unlocked, percentage, legendary, epic };
+    return { total, unlocked, percentage, legendary, epic, rare };
   }, [processedAchievements]);
 
   return (
     <div className="space-y-6">
-      {/* Achievements Container */}
       <div className="relative group p-1 rounded-[4rem] bg-gradient-to-br from-[var(--card-border)] via-transparent to-[var(--card-border)] shadow-2xl">
-        <Surface className="p-10 md:p-14 rounded-[3.8rem] bg-[var(--card-bg)]/60 backdrop-blur-3xl border border-[var(--card-border)] overflow-hidden">
-          {/* Ambient Glow */}
-          <div className="absolute bottom-0 left-0 w-96 h-96 bg-amber-500/5 rounded-full blur-[120px] pointer-events-none" />
+        <Surface className="p-8 md:p-12 rounded-[3.8rem] bg-[var(--card-bg)]/60 backdrop-blur-3xl border border-[var(--card-border)]">
 
-          <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
-            <div className="max-w-2xl">
-              <div className="flex items-center gap-5 mb-4">
-                <div className="w-14 h-14 rounded-[1.5rem] bg-amber-500/10 flex items-center justify-center text-amber-600 border border-amber-500/20 shadow-sm">
-                  <Trophy size={28} strokeWidth={2.5} />
-                </div>
-                <h2 className="text-4xl md:text-5xl font-black text-[var(--site-text)] tracking-tighter leading-tight">
-                  Domain <span className="text-gradient-elite">Milestones</span>
-                </h2>
-              </div>
-              <p className="text-sm font-bold text-[var(--site-text-muted)] opacity-60 tracking-wide max-w-xl">
-                Cryptographic proof of skill acquisition and operational excellence across various neural domains.
+          {/* Header */}
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12 relative z-10">
+            <div className="space-y-2">
+              <h2 className="text-4xl md:text-5xl font-black text-[var(--site-text)] tracking-tighter flex items-center gap-4">
+                Trophy <span className="text-gradient-elite">Room</span>
+              </h2>
+              <p className="text-sm font-bold text-[var(--site-text-muted)] opacity-70">
+                Celebrate your learning milestones and skill mastery.
               </p>
             </div>
 
-            <div className="flex items-center gap-6 px-8 py-5 bg-[var(--site-text)]/[0.03] border border-[var(--card-border)] rounded-[2rem] backdrop-blur-sm">
-              <div className="text-center">
-                <div className="text-2xl font-black text-amber-600">
-                  {stats.unlocked}
-                </div>
-                <div className="text-[8px] font-black text-neutral-500 uppercase tracking-widest">
-                  Secured
-                </div>
+            <div className="flex items-center gap-6 bg-[var(--site-text)]/[0.03] p-4 rounded-3xl border border-[var(--card-border)]">
+              <div className="text-center px-4 border-r border-[var(--card-border)]">
+                <span className="block text-2xl font-black text-[var(--site-text)]">{stats.unlocked}</span>
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[var(--site-text-muted)]">Unlocked</span>
               </div>
-              <div className="w-px h-8 bg-[var(--card-border)]" />
-              <div className="text-center">
-                <div className="text-2xl font-black text-[var(--site-text)]">
-                  {stats.percentage}%
-                </div>
-                <div className="text-[8px] font-black text-neutral-500 uppercase tracking-widest">
-                  Velocity
-                </div>
+              <div className="text-center px-4">
+                <span className="block text-2xl font-black text-indigo-500">{stats.percentage}%</span>
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[var(--site-text-muted)]">Progress</span>
               </div>
             </div>
           </div>
 
-          {/* Achievement Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative z-10">
+          {/* Badges Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 relative z-10">
             {processedAchievements.map((achievement, index) => (
               <AchievementCard
                 key={achievement.id || index}
@@ -166,17 +139,6 @@ export default function AchievementBadges({ achievements }) {
           </div>
         </Surface>
       </div>
-
-      {/* Shimmer animation */}
-      <style jsx>{`
-        @keyframes shimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(200%); }
-        }
-        .animate-shimmer {
-          animation: shimmer 2s infinite;
-        }
-      `}</style>
     </div>
   );
 }
@@ -186,45 +148,53 @@ function AchievementCard({ achievement, index }) {
   const rarityConfig = RARITY_CONFIG[achievement.rarity] || RARITY_CONFIG.common;
   const isLocked = !achievement.unlocked;
 
+  const getAspirationalCopy = () => {
+    if (achievement.rarity === 'legendary') return 'Your trajectory indicates elite growth potential.';
+    if (achievement.rarity === 'epic') return 'Advanced milestones adapt to high-performance learning patterns.';
+    return 'The parameters for this milestone remain undisclosed.';
+  };
+
+  const getAspirationalTitle = () => {
+    if (achievement.rarity === 'legendary') return 'Elite Progression';
+    if (achievement.rarity === 'epic') return 'Growth Pattern';
+    return 'Restricted Data';
+  };
+
   return (
-    <Surface
-      className={`relative p-6 md:p-8 rounded-[2.5rem] border transition-all duration-700 hover:-translate-y-3 group cursor-default perspective-1000 ${isLocked
-        ? 'bg-neutral-50/50 dark:bg-neutral-900/10 border-neutral-200/50 dark:border-white/5 opacity-60 hover:opacity-100 hover:bg-neutral-100/80 dark:hover:bg-neutral-900/40'
-        : `bg-gradient-to-br ${rarityConfig.bg} ${rarityConfig.border} shadow-2xl ${rarityConfig.glow} hover:shadow-indigo-500/10`
+    <div
+      className={`relative p-8 rounded-[2.5rem] border transition-all duration-500 hover:-translate-y-2 group cursor-default perspective-1000 ${isLocked
+        ? 'bg-[var(--card-bg)] border-[var(--card-border)] opacity-75 hover:opacity-100 shadow-sm'
+        : `bg-[var(--card-bg)] ${rarityConfig.border} shadow-lg ${rarityConfig.glow} hover:shadow-xl`
         } overflow-hidden`}
       style={{
         animationDelay: `${index * 50}ms`,
       }}
     >
-
-      {/* Background decoration */}
+      {/* Subtle background tint for unlocked cards */}
       {!isLocked && (
-        <>
-          <div className={`absolute -right-12 -top-12 w-48 h-48 bg-gradient-to-br ${rarityConfig.gradient} rounded-full blur-[80px] opacity-10 group-hover:opacity-20 transition-opacity duration-1000`} />
-          <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent dark:from-white/5 dark:to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-        </>
+        <div className={`absolute inset-0 bg-gradient-to-br ${rarityConfig.gradient} opacity-[0.04] dark:opacity-10 pointer-events-none transition-opacity duration-500 group-hover:opacity-[0.08] dark:group-hover:opacity-20`} />
       )}
 
       <div className="relative z-10">
         {/* Icon & Rarity Indicator */}
-        <div className="flex justify-between items-start mb-8">
+        <div className="flex justify-between items-start mb-6">
           <div
-            className={`w-20 h-20 rounded-[2rem] flex items-center justify-center shadow-2xl transition-all duration-700 ${isLocked
-              ? 'bg-neutral-200/50 dark:bg-neutral-800/50 grayscale opacity-40'
-              : `bg-gradient-to-br ${rarityConfig.gradient} group-hover:scale-110 group-hover:rotate-6 ring-4 ring-white/20`
+            className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center shadow-md transition-all duration-500 ${isLocked
+              ? 'bg-[var(--site-text)]/5 text-[var(--site-text-muted)] opacity-50'
+              : `bg-gradient-to-br ${rarityConfig.gradient} group-hover:scale-110 group-hover:rotate-6 ring-2 ring-white/20`
               }`}
           >
             {isLocked ? (
-              <Lock size={32} className="text-neutral-400 dark:text-neutral-500" strokeWidth={2} />
+              <Lock size={28} strokeWidth={2} />
             ) : (
-              <Icon size={40} className="text-white drop-shadow-2xl" strokeWidth={1.5} />
+              <Icon size={32} className="text-white drop-shadow-md" strokeWidth={1.5} />
             )}
           </div>
 
           {!isLocked && (
-            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/30 dark:bg-black/20 backdrop-blur-md border border-white/30 dark:border-white/10 shadow-sm`}>
+            <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--site-bg)] border ${rarityConfig.border} shadow-sm`}>
               {rarityConfig.icon ? <rarityConfig.icon size={12} className={rarityConfig.textColor} /> : <Star size={12} className={rarityConfig.textColor} />}
-              <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${rarityConfig.textColor}`}>
+              <span className={`text-[9px] font-black uppercase tracking-widest ${rarityConfig.textColor}`}>
                 {rarityConfig.label}
               </span>
             </div>
@@ -232,60 +202,63 @@ function AchievementCard({ achievement, index }) {
         </div>
 
         {/* Title */}
-        <h4 className={`text-xl font-black mb-3 leading-tight ${isLocked ? 'text-neutral-400 dark:text-neutral-600' : 'text-neutral-900 dark:text-white'
+        <h4 className={`text-xl font-black mb-2 leading-tight ${isLocked ? 'text-[var(--site-text-muted)]' : 'text-[var(--site-text)]'
           }`}>
-          {isLocked ? 'Restricted Data' : achievement.title}
+          {isLocked ? getAspirationalTitle() : achievement.title}
         </h4>
 
         {/* Description */}
-        <p className={`text-sm font-medium mb-6 leading-relaxed ${isLocked ? 'text-neutral-300 dark:text-neutral-700 italic' : 'text-neutral-600 dark:text-neutral-400'
+        <p className={`text-sm font-semibold mb-6 leading-relaxed ${isLocked ? 'text-[var(--site-text-muted)] opacity-60 italic' : 'text-[var(--site-text-muted)]'
           }`}>
-          {isLocked ? 'The parameters for this milestone remain undisclosed.' : achievement.description}
+          {isLocked ? getAspirationalCopy() : achievement.description}
         </p>
 
         {/* Progress / Date */}
         {isLocked && achievement.progress !== undefined ? (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-[10px] font-black text-neutral-500 uppercase tracking-widest">
-              <span>Synchronization</span>
-              <span>{achievement.progress}%</span>
+          <div className="space-y-2 mt-auto pt-4 border-t border-[var(--card-border)]">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-[9px] font-black text-[var(--site-text-muted)] uppercase tracking-widest truncate">
+                Sync Progress
+              </span>
+              <span className="text-[10px] font-black text-[var(--site-text-muted)] shrink-0">
+                {achievement.progress}%
+              </span>
             </div>
-            <div className="h-2 bg-neutral-200/50 dark:bg-neutral-800/50 rounded-full overflow-hidden border border-neutral-300/10">
+            <div className="h-1.5 w-full bg-[var(--site-text)]/5 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-1000 ease-in-out"
+                className="h-full bg-[var(--site-text-muted)] opacity-30 rounded-full transition-all duration-1000 ease-in-out"
                 style={{ width: `${achievement.progress}%` }}
               />
             </div>
           </div>
-        ) : (
-          !isLocked && achievement.unlockedDate && (
-            <div className="flex items-center gap-2.5 text-xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 dark:bg-emerald-500/5 w-fit px-4 py-2 rounded-xl border border-emerald-500/20">
-              <CheckCircle2 size={16} />
-              Protocol Secured {achievement.unlockedDate}
-            </div>
-          )
-        )}
-
-        {/* Reward */}
-        {!isLocked && achievement.reward && (
-          <div className="mt-6 pt-6 border-t border-black/5 dark:border-white/5">
+        ) : !isLocked ? (
+          <div className="space-y-4 mt-auto pt-4 border-t border-[var(--card-border)]">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-amber-500/10">
-                < Award size={16} className="text-amber-600 dark:text-amber-500" />
+              <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
+                <CheckCircle2 size={16} className="text-emerald-500" />
               </div>
-              <span className="text-[10px] font-black text-amber-600 dark:text-amber-500 uppercase tracking-widest">
-                {achievement.reward}
-              </span>
+              <div>
+                <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
+                  Protocol Secured
+                </p>
+                <p className="text-[11px] font-bold text-[var(--site-text-muted)]">
+                  {achievement.unlockedDate}
+                </p>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
 
-      {/* Unlock glow effect */}
-      {!isLocked && (
-        <div className={`absolute inset-0 rounded-[2rem] bg-gradient-to-br ${rarityConfig.gradient} opacity-0 group-hover:opacity-5 transition-opacity pointer-events-none duration-700`} />
-      )}
-    </Surface>
+            {achievement.reward && (
+              <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--site-text)]/5`}>
+                <Award size={14} className="text-amber-500" />
+                <span className="text-[10px] font-black text-[var(--site-text)] uppercase tracking-widest">
+                  +{achievement.reward}
+                </span>
+              </div>
+            )}
+          </div>
+        ) : null}
+      </div>
+    </div>
   );
 }
 

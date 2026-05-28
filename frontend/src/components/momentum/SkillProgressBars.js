@@ -10,8 +10,10 @@ import {
   Award,
   TrendingUp,
   ChevronRight,
-  Star
+  Star,
+  Lock
 } from 'lucide-react';
+import BlurCard from '../monetization/BlurCard';
 
 // Skill category icons
 const CATEGORY_ICONS = {
@@ -32,7 +34,7 @@ const SKILL_LEVELS = {
   expert: { min: 76, max: 100, label: 'Expert', color: 'from-emerald-500 to-teal-500', bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-600 dark:text-emerald-400' },
 };
 
-export default function SkillProgressBars({ skills }) {
+export default function SkillProgressBars({ skills, tier, entitlements }) {
   const [expandedSkill, setExpandedSkill] = useState(null);
 
   // Process and sort skills
@@ -71,7 +73,7 @@ export default function SkillProgressBars({ skills }) {
           { label: 'Expert Level', val: stats.expertCount, icon: Award, color: 'text-emerald-600', bg: 'bg-emerald-500/10' },
           { label: 'Advanced', val: stats.advancedCount, icon: Star, color: 'text-amber-600', bg: 'bg-amber-500/10' }
         ].map((stat, i) => (
-          <Surface key={i} className="p-8 rounded-[2.5rem] bg-white/50 dark:bg-white/5 border border-[var(--card-border)] hover:border-indigo-500/20 transition-all duration-500 hover:-translate-y-1.5 shadow-lg overflow-hidden backdrop-blur-md group">
+          <Surface key={i} className="p-8 rounded-[2.5rem] bg-white/90 dark:bg-white/5 border border-neutral-200 dark:border-[var(--card-border)] hover:border-indigo-500/20 transition-all duration-500 hover:-translate-y-1.5 shadow-sm hover:shadow-xl overflow-hidden backdrop-blur-md group">
             <div className="flex flex-col gap-4 relative z-10">
               <div className={`w-12 h-12 rounded-2xl ${stat.bg} ${stat.color} flex items-center justify-center border border-white/5 group-hover:scale-110 transition-all duration-700`}>
                 <stat.icon size={22} />
@@ -91,22 +93,22 @@ export default function SkillProgressBars({ skills }) {
 
       {/* Skills List Container */}
       <div className="relative group p-1 rounded-[4rem] bg-gradient-to-br from-[var(--card-border)] via-transparent to-[var(--card-border)] shadow-2xl">
-        <Surface className="p-10 md:p-14 rounded-[3.8rem] bg-[var(--card-bg)]/60 backdrop-blur-3xl border border-[var(--card-border)] overflow-hidden">
+        <Surface className="p-10 md:p-14 rounded-[3.8rem] bg-white/95 dark:bg-[var(--card-bg)]/60 backdrop-blur-3xl border border-neutral-200 dark:border-[var(--card-border)] overflow-hidden shadow-2xl">
           {/* Subtle decoration like home page widget */}
           <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/5 rounded-full blur-[120px] pointer-events-none" />
 
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8 mb-16">
             <div>
               <h3 className="text-4xl md:text-5xl font-black text-[var(--site-text)] tracking-tighter leading-tight mb-2">
-                Active <span className="text-gradient-elite">Experience Matrix</span>
+                Skill <span className="text-gradient-elite">Progress</span>
               </h3>
               <p className="text-sm font-bold text-[var(--site-text-muted)] opacity-60 tracking-wide">
-                Real-time synchronization of acquired neural patterns and domain expertise.
+                Keep track of your technical skills and proficiency levels across all subjects.
               </p>
             </div>
             <div className="flex items-center gap-3 px-6 py-3 bg-[var(--site-text)]/[0.03] border border-[var(--card-border)] rounded-2xl backdrop-blur-sm">
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_12px_rgba(16,185,129,0.5)]" />
-              <span className="text-[10px] font-black text-[var(--site-text)] uppercase tracking-[0.4em]">Satellite Sync Active</span>
+              <span className="text-[10px] font-black text-[var(--site-text)] uppercase tracking-[0.4em]">Sync Active</span>
             </div>
           </div>
 
@@ -118,6 +120,8 @@ export default function SkillProgressBars({ skills }) {
                 index={index}
                 isExpanded={expandedSkill === index}
                 onToggle={() => setExpandedSkill(expandedSkill === index ? null : index)}
+                tier={tier}
+                isLocked={!entitlements?.deepSkillAnalytics && index > 2}
               />
             ))}
           </div>
@@ -127,7 +131,7 @@ export default function SkillProgressBars({ skills }) {
   );
 }
 
-function SkillBar({ skill, index, isExpanded, onToggle }) {
+function SkillBar({ skill, index, isExpanded, onToggle, tier, isLocked }) {
   const Icon = CATEGORY_ICONS[skill.category?.toLowerCase()] || CATEGORY_ICONS.default;
   const levelConfig = SKILL_LEVELS[skill.level] || SKILL_LEVELS.beginner;
 
@@ -209,23 +213,51 @@ function SkillBar({ skill, index, isExpanded, onToggle }) {
         <div className="mt-4 p-5 sm:p-8 md:p-10 rounded-[2rem] md:rounded-[2.5rem] bg-white dark:bg-white/5 border border-[var(--card-border)] animate-in slide-in-from-top-2 fade-in duration-500 shadow-inner overflow-hidden relative">
           <div className="absolute top-[-20%] right-[-10%] w-64 h-64 bg-indigo-500/5 rounded-full blur-[80px] pointer-events-none" />
 
-          <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 md:gap-8">
-            {[
-              { label: 'Courses Done', val: skill.coursesCompleted },
-              { label: 'Hours Spent', val: `${skill.hoursSpent}h` },
-              { label: 'Last Practiced', val: skill.lastPracticed },
-              { label: 'Next Milestone', val: skill.nextMilestone, isActive: true }
-            ].map((detail, i) => detail.val && (
-              <div key={i} className={`space-y-1 ${detail.isActive ? 'col-span-2 lg:col-span-1' : ''}`}>
-                <p className="text-[9px] font-black !text-indigo-500 dark:!text-indigo-300 uppercase tracking-[0.2em] opacity-80">
-                  {detail.label}
-                </p>
-                <p className="text-base sm:text-lg md:text-xl font-black tracking-tight !text-indigo-700 dark:!text-indigo-400 leading-tight drop-shadow-[0_2px_8px_rgba(99,102,241,0.25)]">
-                  {detail.val}
-                </p>
-              </div>
-            ))}
-          </div>
+          {isLocked ? (
+            <BlurCard
+                title="Evolution Timeline"
+                tier="pro"
+                featureName="skill_evolution"
+                isLocked={true}
+                className="border-none bg-transparent p-0 shadow-none"
+            >
+                <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 md:gap-8">
+                    {[
+                    { label: 'Courses Done', val: skill.coursesCompleted },
+                    { label: 'Hours Spent', val: `${skill.hoursSpent}h` },
+                    { label: 'Last Practiced', val: skill.lastPracticed },
+                    { label: 'Next Milestone', val: skill.nextMilestone, isActive: true }
+                    ].map((detail, i) => detail.val && (
+                    <div key={i} className={`space-y-1 ${detail.isActive ? 'col-span-2 lg:col-span-1' : ''}`}>
+                        <p className="text-[9px] font-black !text-indigo-500 dark:!text-indigo-300 uppercase tracking-[0.2em] opacity-80">
+                        {detail.label}
+                        </p>
+                        <p className="text-base sm:text-lg md:text-xl font-black tracking-tight !text-indigo-700 dark:!text-indigo-400 leading-tight">
+                        {detail.val}
+                        </p>
+                    </div>
+                    ))}
+                </div>
+            </BlurCard>
+          ) : (
+            <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 md:gap-8">
+                {[
+                { label: 'Courses Done', val: skill.coursesCompleted },
+                { label: 'Hours Spent', val: `${skill.hoursSpent}h` },
+                { label: 'Last Practiced', val: skill.lastPracticed },
+                { label: 'Next Milestone', val: skill.nextMilestone, isActive: true }
+                ].map((detail, i) => detail.val && (
+                <div key={i} className={`space-y-1 ${detail.isActive ? 'col-span-2 lg:col-span-1' : ''}`}>
+                    <p className="text-[9px] font-black !text-indigo-500 dark:!text-indigo-300 uppercase tracking-[0.2em] opacity-80">
+                    {detail.label}
+                    </p>
+                    <p className="text-base sm:text-lg md:text-xl font-black tracking-tight !text-indigo-700 dark:!text-indigo-400 leading-tight drop-shadow-[0_2px_8px_rgba(99,102,241,0.25)]">
+                    {detail.val}
+                    </p>
+                </div>
+                ))}
+            </div>
+          )}
 
           {skill.description && (
             <div className="mt-8 pt-6 border-t border-neutral-200/50 dark:border-white/5">

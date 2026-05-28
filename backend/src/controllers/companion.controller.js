@@ -1,6 +1,7 @@
 import Bytez from 'bytez.js';
 import Groq from 'groq-sdk';
 import Conversation from '../models/Conversation.js';
+import User from '../models/User.js';
 import ModelClient, { isUnexpected } from "@azure-rest/ai-inference";
 import { AzureKeyCredential } from "@azure/core-auth";
 import { analyzeUserEmotion, buildEmotionalContext } from '../utils/emotionAnalyzer.js';
@@ -350,6 +351,35 @@ function buildContextMessage(conversation, userContext, isLoggedIn) {
     }
 }
 
+// Calculate rich chat limits across all subscription tiers
+async function getChatLimitInfo(userId, conversation) {
+    if (!userId) {
+        const usage = conversation.guestMessageCount || 0;
+        const limit = 5;
+        return {
+            tier: 'guest',
+            limit,
+            usage,
+            remaining: Math.max(0, limit - usage)
+        };
+    }
+
+    const user = await User.findById(userId);
+    const tier = user?.subscriptionTier || 'free';
+    const usage = user?.usage?.dailyChatCount || 0;
+    
+    let limit = 5; // default free
+    if (tier === 'pro') limit = 50;
+    else if (tier === 'career_plus') limit = 200;
+
+    return {
+        tier,
+        limit,
+        usage,
+        remaining: Math.max(0, limit - usage)
+    };
+}
+
 // Main message handler
 export async function sendMessage(req, res) {
     try {
@@ -519,6 +549,9 @@ export async function sendMessage(req, res) {
         console.log(`🏅 New Badges Earned: ${JSON.stringify(newBadges)}`);
 
         if (newBadges.length > 0) {
+            if (!conversation.badges) {
+                conversation.badges = [];
+            }
             conversation.badges.push(...newBadges);
             conversation.markModified('badges'); // FORCE SAVE
         }
@@ -532,11 +565,21 @@ export async function sendMessage(req, res) {
             timestamp: new Date()
         });
 
+        // Track companion usage for authenticated users
+        if (userId && req.usageToIncrement === 'chatLimit') {
+            const { incrementUsage } = await import('../utils/usage.js');
+            await incrementUsage(userId, 'chatLimit');
+        }
+
+        // Calculate rich chat limits across all subscription tiers
+        const limitInfo = await getChatLimitInfo(userId, conversation);
+
         res.json({
             success: true,
             response: aiResponse,
             mode: conversation.currentMode,
-            messagesRemaining: userId ? null : (5 - conversation.guestMessageCount),
+            messagesRemaining: limitInfo.remaining,
+            limitInfo,
             newBadges: newBadges, // Return new badges to frontend
             // 🧠 EQ-AI: Return emotional analysis to frontend
             emotionalSupport: emotionAnalysis.shouldShowEmotionalSupport ? {
@@ -559,8 +602,8 @@ export async function sendMessage(req, res) {
 // Badge Evaluation Logic
 function evaluateBadges(conversation) {
     const newBadges = [];
-    const existingBadgeIds = new Set(conversation.badges.map(b => b.id));
-    const stats = conversation.stats;
+    const existingBadgeIds = new Set((conversation.badges || []).map(b => b.id));
+    const stats = conversation.stats || { totalMessages: 0 };
 
     // Badge 1: First Hello (First message sent)
     if (stats.totalMessages >= 1 && !existingBadgeIds.has('first-hello')) {
@@ -608,11 +651,15 @@ export async function getHistory(req, res) {
 
         const conversation = await getOrCreateConversation(userId, sessionId);
 
+        // Calculate rich chat limits across all subscription tiers
+        const limitInfo = await getChatLimitInfo(userId, conversation);
+
         res.json({
             success: true,
             messages: conversation.messages,
             currentMode: conversation.currentMode,
-            messagesRemaining: userId ? null : (5 - conversation.guestMessageCount)
+            messagesRemaining: limitInfo.remaining,
+            limitInfo
         });
 
     } catch (error) {

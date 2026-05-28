@@ -271,7 +271,7 @@ export default function Navbar({ onMenuClick, isSidebarActive }) {
             
             {isSidebarActive && (
               <h2 className="text-sm font-black text-[var(--text-primary)] uppercase tracking-[0.2em] hidden sm:block">
-                {pathname.split('/').pop().replace(/-/g, ' ')}
+                {pathname.startsWith('/portfolio/') ? 'portfolio' : pathname.split('/').pop().replace(/-/g, ' ')}
               </h2>
             )}
           </div>

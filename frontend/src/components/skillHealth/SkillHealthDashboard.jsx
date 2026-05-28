@@ -20,10 +20,12 @@ import {
     Heart,
     TrendingUp,
     Shield,
-    X
+    X,
+    Lock
 } from 'lucide-react';
+import UpgradeInlineCTA from '../monetization/UpgradeInlineCTA';
 
-export default function SkillHealthDashboard() {
+export default function SkillHealthDashboard({ tier, entitlements, initialSkills }) {
     const { token, user } = useAuth();
     const [isMountedState, setIsMountedState] = useState(false);
     const queryClient = useQueryClient();
@@ -93,7 +95,7 @@ export default function SkillHealthDashboard() {
     });
 
     const dashboardData = healthData?.data || healthData || {};
-    const skills = dashboardData.skills || [];
+    const skills = initialSkills || dashboardData.skills || [];
     const overallHealth = dashboardData.overallHealth || 0;
     const stats = {
         critical: dashboardData.criticalCount || 0,
@@ -337,10 +339,24 @@ export default function SkillHealthDashboard() {
                                         key={skill.name || index}
                                         skill={skill}
                                         onTakeChallenge={handleTakeChallenge}
+                                        tier={tier}
+                                        isGated={!entitlements?.fullSkillHealth && index > 2}
                                     />
                                 ))
                             }
                         </div >
+
+                        {/* Upgrade CTA for Free Users */}
+                        {!entitlements?.fullSkillHealth && (
+                            <div className="mt-8 pt-10 border-t border-[var(--card-border)]/5 flex justify-center">
+                                <UpgradeInlineCTA 
+                                    tier="pro"
+                                    title="Strategic Intelligence"
+                                    subtitle="Reveal your hidden skill trajectories and elite growth patterns."
+                                    source="skill_health_dashboard"
+                                />
+                            </div>
+                        )}
                     </Surface >
                 </div >
             </div >

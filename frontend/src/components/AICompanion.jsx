@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Sparkles, X, Send, Trash2, Loader2, MessageCircle, GraduationCap, HelpCircle, Baby, Copy, Check, BookOpen, Target, Trophy, Briefcase, BarChart3, Wrench, ArrowRight, Mic, MicOff } from 'lucide-react';
+import { Sparkles, X, Send, Trash2, Loader2, MessageCircle, GraduationCap, HelpCircle, Baby, Copy, Check, BookOpen, Target, Trophy, Briefcase, BarChart3, Wrench, ArrowRight, Mic, MicOff, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../services/api';
@@ -220,6 +220,8 @@ export default function AICompanion() {
     const [isLoading, setIsLoading] = useState(false);
     const [currentMode, setCurrentMode] = useState('chat');
     const [messagesRemaining, setMessagesRemaining] = useState(null);
+    const [limitInfo, setLimitInfo] = useState(null);
+    const [isLimitCardExpanded, setIsLimitCardExpanded] = useState(false);
     const [error, setError] = useState(null);
     const [showModeSelector, setShowModeSelector] = useState(false);
     const [copiedMsgId, setCopiedMsgId] = useState(null); // For copy feedback
@@ -396,6 +398,9 @@ export default function AICompanion() {
                 setMessages(response.messages || []);
                 setCurrentMode(response.currentMode || 'chat');
                 setMessagesRemaining(response.messagesRemaining);
+                if (response.limitInfo) {
+                    setLimitInfo(response.limitInfo);
+                }
             }
         } catch (err) {
             console.log('📭 No previous history');
@@ -614,6 +619,9 @@ export default function AICompanion() {
                 };
                 setMessages(prev => [...prev, aiMessage]);
                 setMessagesRemaining(response.messagesRemaining);
+                if (response.limitInfo) {
+                    setLimitInfo(response.limitInfo);
+                }
 
                 // 🧠 EQ-AI: Store emotional support for quick actions
                 if (response.emotionalSupport) {
@@ -635,7 +643,15 @@ export default function AICompanion() {
                     setMessages(prev => [...prev, celebrationMsg]);
                 }
             } else if (response.limitReached) {
-                setError('Daily limit reached! Sign in for unlimited access.');
+                setError(response.message || (user ? 'Daily limit reached! Upgrade your plan for more access.' : 'Daily limit reached! Sign in for unlimited access.'));
+                if (response.usage) {
+                    setLimitInfo({
+                        tier: user?.subscriptionTier || 'free',
+                        limit: response.usage.limit,
+                        usage: response.usage.current,
+                        remaining: 0
+                    });
+                }
             } else {
                 setError(response.error || 'Failed to get response');
             }
@@ -1095,15 +1111,130 @@ export default function AICompanion() {
 
                     {/* Input Area - Fixed at bottom with safe padding */}
                     <div className="p-4 sm:p-5 border-t border-[var(--card-border)] bg-[var(--card-bg)] pb-[max(1.5rem,env(safe-area-inset-bottom,24px))]">
-                        {/* Guest limit indicator */}
-                        {!user && messagesRemaining !== null && (
-                            <div className="text-xs text-[var(--site-text-muted)] text-center mb-2">
-                                {messagesRemaining > 0
-                                    ? `${messagesRemaining} free messages remaining today`
-                                    : 'Sign in for unlimited messages'
-                                }
-                            </div>
-                        )}
+                        {/* Beautiful subscription tier-aware chat limit indicator card */}
+                        {(() => {
+                            const activeLimitInfo = limitInfo || (messagesRemaining !== null ? {
+                                tier: !user ? 'guest' : (user.subscriptionTier || 'free'),
+                                limit: !user ? 5 : (user.subscriptionTier === 'pro' ? 50 : (user.subscriptionTier === 'career_plus' ? 200 : 5)),
+                                usage: !user ? (5 - messagesRemaining) : ((user.subscriptionTier === 'pro' ? 50 : (user.subscriptionTier === 'career_plus' ? 200 : 5)) - messagesRemaining),
+                                remaining: messagesRemaining
+                            } : null);
+
+                            if (!activeLimitInfo) return null;
+
+                            return (
+                                <div className="mb-3 rounded-2xl bg-[var(--card-border)]/20 border border-[var(--card-border)]/50 text-xs backdrop-blur-md transition-all duration-300 overflow-hidden shadow-lg shadow-black/5 hover:border-[var(--accent-primary)]/30">
+                                    {/* Header / Compact Bar (Always Visible) - Click to toggle */}
+                                    <div 
+                                        onClick={() => setIsLimitCardExpanded(!isLimitCardExpanded)}
+                                        className="flex items-center justify-between p-3 cursor-pointer select-none transition-colors duration-200 hover:bg-[var(--card-border)]/10"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            {/* Plan Badge */}
+                                            <span className={`px-2.5 py-0.5 rounded-full text-[9px] uppercase font-black tracking-widest border transition-all ${
+                                                activeLimitInfo.tier === 'career_plus'
+                                                    ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-400 border-amber-500/30'
+                                                    : activeLimitInfo.tier === 'pro'
+                                                    ? 'bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400 border-indigo-500/30 font-bold'
+                                                    : activeLimitInfo.tier === 'free'
+                                                    ? 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 text-blue-400 border-blue-500/30'
+                                                    : 'bg-gray-500/10 text-gray-400 border-gray-500/20'
+                                            }`}>
+                                                {activeLimitInfo.tier === 'career_plus' ? '🏆 Career+' : 
+                                                 activeLimitInfo.tier === 'pro' ? '⭐ Pro' : 
+                                                 activeLimitInfo.tier === 'free' ? '🌱 Free' : '👥 Guest'}
+                                            </span>
+                                            {/* Message Count Text */}
+                                            <span className="text-[var(--site-text-muted)] font-bold text-[11px]">
+                                                {activeLimitInfo.remaining} / {activeLimitInfo.limit} left today
+                                            </span>
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            {/* Minimal progress indicator when collapsed */}
+                                            {!isLimitCardExpanded && (
+                                                <div className="w-16 h-1 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-300/10 dark:border-slate-700/30">
+                                                    <div 
+                                                        className={`h-full rounded-full transition-all duration-500 ${
+                                                            (activeLimitInfo.remaining / activeLimitInfo.limit) <= 0.1
+                                                                ? 'bg-red-500'
+                                                                : (activeLimitInfo.remaining / activeLimitInfo.limit) <= 0.3
+                                                                ? 'bg-amber-500'
+                                                                : 'bg-indigo-500'
+                                                        }`}
+                                                        style={{ width: `${(activeLimitInfo.remaining / activeLimitInfo.limit) * 100}%` }}
+                                                    />
+                                                </div>
+                                            )}
+                                            
+                                            {/* Chevron Toggle Icon */}
+                                            {isLimitCardExpanded ? (
+                                                <ChevronUp className="w-4 h-4 text-[var(--site-text-muted)] transition-transform hover:text-[var(--site-text)]" />
+                                            ) : (
+                                                <ChevronDown className="w-4 h-4 text-[var(--site-text-muted)] transition-transform hover:text-[var(--site-text)]" />
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Collapsible Content - Smooth height/opacity transitions */}
+                                    <div 
+                                        className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                                            isLimitCardExpanded 
+                                                ? 'max-h-[250px] opacity-100 border-t border-[var(--card-border)]/30 p-3 bg-[var(--card-border)]/5' 
+                                                : 'max-h-0 opacity-0 pointer-events-none'
+                                        }`}
+                                    >
+                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                                            <span className="text-[var(--site-text-muted)] font-medium">
+                                                Daily Limit Usage Breakdown
+                                            </span>
+                                            
+                                            {/* Link to Pricing / Upgrade */}
+                                            {activeLimitInfo.tier !== 'career_plus' && (
+                                                <button 
+                                                    onClick={() => {
+                                                        setIsOpen(false);
+                                                        if (activeLimitInfo.tier === 'guest') {
+                                                            router.push('/auth/login?redirect=/pricing');
+                                                        } else {
+                                                            router.push('/pricing');
+                                                        }
+                                                    }}
+                                                    className="text-[var(--accent-primary)] hover:text-indigo-400 font-bold cursor-pointer text-left transition-colors flex items-center gap-0.5"
+                                                >
+                                                    {activeLimitInfo.tier === 'guest' ? 'Register or Upgrade →' : 'Upgrade Plan →'}
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {/* Modern Progress Bar */}
+                                        <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden mb-2.5 shadow-inner border border-slate-300/10 dark:border-slate-700/30">
+                                            <div 
+                                                className={`h-full rounded-full transition-all duration-500 ${
+                                                    (activeLimitInfo.remaining / activeLimitInfo.limit) <= 0.1
+                                                        ? 'bg-gradient-to-r from-red-500 to-rose-600'
+                                                        : (activeLimitInfo.remaining / activeLimitInfo.limit) <= 0.3
+                                                        ? 'bg-gradient-to-r from-amber-500 to-orange-500'
+                                                        : 'bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-500'
+                                                }`}
+                                                style={{ width: `${(activeLimitInfo.remaining / activeLimitInfo.limit) * 100}%` }}
+                                            />
+                                        </div>
+
+                                        {/* Interactive Tier Recommendations */}
+                                        <div className="text-[10px] text-[var(--site-text-muted)] flex items-start gap-1.5 bg-[var(--card-bg)]/40 p-2 rounded-xl border border-[var(--card-border)]/30 leading-relaxed text-left">
+                                            <span className="font-black text-[var(--accent-primary)] uppercase tracking-wider shrink-0 mt-0.5">💡 PRO-TIP:</span>
+                                            <span>
+                                                {activeLimitInfo.tier === 'guest' && 'Guest users get a limited preview of 5 messages daily. Create a free account or upgrade to Pro to unlock 50 daily messages and persistent learning tracks!'}
+                                                {activeLimitInfo.tier === 'free' && 'You are on the Free plan. Upgrade to Pro to get 50 daily messages, advanced AI Course Insights, and Resume analysis tools.'}
+                                                {activeLimitInfo.tier === 'pro' && 'You are on the Pro plan. Upgrade to Career+ to get 200 daily messages, custom networking outreach, and full Opportunity Radar access.'}
+                                                {activeLimitInfo.tier === 'career_plus' && 'You have reached the elite Career+ tier! All platform features and maximum daily AI messages are fully unlocked.'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })()}
 
                         <div className="flex items-center gap-3">
                             <div className="flex-1 relative">

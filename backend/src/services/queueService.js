@@ -21,8 +21,8 @@ class QueueService {
                 address: config.mongoUri, 
                 collection: 'agendaJobs' 
             }),
-            processEvery: '5 seconds', // Poll interval for new jobs
-            maxConcurrency: 5,         // Prevent AI rate limit explosions
+            processEvery: '2 seconds', // Poll interval for new jobs
+            maxConcurrency: 20,         // Higher concurrency for faster throughput
         });
 
         this.isInitialized = false;
@@ -30,11 +30,17 @@ class QueueService {
         this.agenda.on('ready', async () => {
             const redactedUri = config.mongoUri ? `${config.mongoUri.substring(0, 15)}...${config.mongoUri.substring(config.mongoUri.length - 10)}` : 'NULL';
             console.log(`✅ [QueueService] Agenda connected to: ${redactedUri}`);
-            await this.agenda.start();
-            this.isInitialized = true;
-
-            // Start scheduled background jobs after Agenda is ready
-            await this._startScheduledJobs();
+            
+            try {
+                await this.agenda.start();
+                console.log('🚀 [QueueService] Agenda started successfully and is ready to process jobs.');
+                this.isInitialized = true;
+                
+                // Start scheduled background jobs after Agenda is ready
+                await this._startScheduledJobs();
+            } catch (err) {
+                console.error('❌ [QueueService] Agenda start failed:', err);
+            }
         });
 
         this.agenda.on('error', (error) => {

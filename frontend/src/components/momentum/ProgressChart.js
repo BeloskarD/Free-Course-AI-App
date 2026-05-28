@@ -35,7 +35,7 @@ export default function ProgressChart({ data }) {
 
   return (
     <div className="relative group p-1 rounded-[4rem] bg-gradient-to-br from-[var(--card-border)] via-transparent to-[var(--card-border)] shadow-2xl">
-      <Surface className="p-10 md:p-14 rounded-[3.8rem] bg-[var(--card-bg)]/60 backdrop-blur-3xl border border-[var(--card-border)] overflow-hidden">
+      <Surface className="p-10 md:p-14 rounded-[3.8rem] bg-white/95 dark:bg-[var(--card-bg)]/60 backdrop-blur-3xl border border-neutral-200 dark:border-[var(--card-border)] overflow-hidden shadow-2xl">
         {/* Ambient Glow */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/5 rounded-full blur-[120px] pointer-events-none" />
 
@@ -47,11 +47,11 @@ export default function ProgressChart({ data }) {
                 <BarChart3 size={28} strokeWidth={2.5} />
               </div>
               <h2 className="text-4xl md:text-5xl font-black text-[var(--site-text)] tracking-tighter leading-tight">
-                Velocity <span className="text-gradient-elite">Analysis</span>
+                Progress <span className="text-gradient-elite">Analysis</span>
               </h2>
             </div>
             <p className="text-sm font-bold text-[var(--site-text-muted)] opacity-60 tracking-wide max-w-xl">
-              Visualizing the scalar magnitude of knowledge acquisition over the current operational timeline.
+              Visualize your learning speed and course completion trends over the last 12 weeks.
             </p>
           </div>
 
@@ -61,7 +61,7 @@ export default function ProgressChart({ data }) {
                 {stats.average}
               </div>
               <div className="text-[8px] font-black text-neutral-500 uppercase tracking-widest">
-                Wk Avg
+                Weekly Average
               </div>
             </div>
             <div className="w-px h-8 bg-[var(--card-border)]" />
@@ -72,7 +72,7 @@ export default function ProgressChart({ data }) {
                 {Math.abs(stats.trend)}%
               </div>
               <div className="text-[8px] font-black text-neutral-500 uppercase tracking-widest">
-                Trend Flux
+                Recent Trend
               </div>
             </div>
           </div>

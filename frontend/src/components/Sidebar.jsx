@@ -22,49 +22,50 @@ import {
   FileText
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-
-const sidebarGroups = [
-  {
-    label: 'Evolution Hub',
-    items: [
-      { name: 'Dashboard', href: '/dashboard', icon: Sparkles },
-      { name: 'Missions', href: '/missions', icon: Rocket },
-      { name: 'Courses', href: '/courses', icon: BookOpen },
-    ],
-  },
-  {
-    label: 'Growth Hub',
-    items: [
-      { name: 'Performance', href: '/growth', icon: Zap },
-      { name: 'Momentum', href: '/momentum', icon: BarChart3 },
-      { name: 'Wellbeing', href: '/wellbeing', icon: Heart },
-    ],
-  },
-  {
-    label: 'Intelligence Hub',
-    items: [
-      { name: 'Career Radar', href: '/career-acceleration', icon: Briefcase },
-      { name: 'AI Resume', href: '/ai-resume', icon: FileText },
-      { name: 'Skill Graph', href: '/skill-graph', icon: Brain },
-      { name: 'Gap Analysis', href: '/skill-analysis', icon: BarChart3 },
-      { name: 'AI Intel', href: '/ai-intelligence', icon: Sparkles },
-    ],
-  },
-  {
-    label: 'Resources Hub',
-    items: [
-      { name: 'AI Tools', href: '/ai-tools', icon: Wrench },
-      { name: 'Youtube Mentors', href: '/youtube', icon: Youtube },
-      { name: 'Portfolio', href: '/dashboard?tab=portfolio', icon: LayoutDashboard },
-    ],
-  },
-];
+import DevTierSwitcher from './ui/DevTierSwitcher';
 
 export default function Sidebar({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }) {
   const { user } = useAuth();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const scrollRef = React.useRef(null);
+
+  const sidebarGroups = [
+    {
+      label: 'Evolution Hub',
+      items: [
+        { name: 'Dashboard', href: '/dashboard', icon: Sparkles },
+        { name: 'Missions', href: '/missions', icon: Rocket },
+        { name: 'Courses', href: '/courses', icon: BookOpen },
+      ],
+    },
+    {
+      label: 'Growth Hub',
+      items: [
+        { name: 'Performance', href: '/growth', icon: Zap },
+        { name: 'Momentum', href: '/momentum', icon: BarChart3 },
+        { name: 'Wellbeing', href: '/wellbeing', icon: Heart },
+      ],
+    },
+    {
+      label: 'Intelligence Hub',
+      items: [
+        { name: 'Career Radar', href: '/career-acceleration', icon: Briefcase },
+        { name: 'AI Resume', href: '/ai-resume', icon: FileText },
+        { name: 'Skill Graph', href: '/skill-graph', icon: Brain },
+        { name: 'Gap Analysis', href: '/skill-analysis', icon: BarChart3 },
+        { name: 'AI Intel', href: '/ai-intelligence', icon: Sparkles },
+      ],
+    },
+    {
+      label: 'Resources Hub',
+      items: [
+        { name: 'AI Tools', href: '/ai-tools', icon: Wrench },
+        { name: 'Youtube Mentors', href: '/youtube', icon: Youtube },
+        { name: 'Portfolio', href: user ? `/portfolio/${user.id}` : '/dashboard', icon: LayoutDashboard },
+      ],
+    },
+  ];
 
   // Removed: if (!user) return null; (Handled by ClientShell and conditional rendering below)
 
@@ -89,8 +90,8 @@ export default function Sidebar({ isCollapsed, setIsCollapsed, isMobileOpen, set
       return !searchParams.toString().includes('tab=');
     }
 
-    // Special case for AI Resume which redirects to /dashboard?tab=portfolio
-    if (href === '/ai-resume' && pathname === '/dashboard' && searchParams.get('tab') === 'portfolio') {
+    // Special case for AI Resume which redirects to /dashboard?tab=resume
+    if (href === '/ai-resume' && pathname === '/dashboard' && searchParams.get('tab') === 'resume') {
       return true;
     }
 
@@ -206,6 +207,13 @@ export default function Sidebar({ isCollapsed, setIsCollapsed, isMobileOpen, set
             </div>
           ))}
         </div>
+
+        {/* Dev Tier Switcher - Only visible when not collapsed or in mobile */}
+        {(!isCollapsed || isMobileOpen) && (
+          <div className="px-4 mb-4">
+            <DevTierSwitcher />
+          </div>
+        )}
 
         {/* User / Bottom Actions */}
         <div className="p-4 border-t border-[var(--card-border)] bg-[var(--site-text)]/5">

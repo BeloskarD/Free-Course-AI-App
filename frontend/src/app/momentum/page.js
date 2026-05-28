@@ -45,6 +45,34 @@ export default function MomentumTrackerPage() {
   // Extract data from response
   const momentumData = response?.data;
 
+  // Tier-based Entitlements Mapping
+  const userTier = user?.subscriptionTier || "free";
+  const entitlements = {
+    free: {
+      velocity: false,
+      fullSkillHealth: false,
+      predictiveInsights: false,
+      deepSkillAnalytics: false,
+    },
+    pro: {
+      velocity: true,
+      fullSkillHealth: true,
+      predictiveInsights: false,
+      deepSkillAnalytics: true,
+    },
+    career_plus: {
+      velocity: true,
+      fullSkillHealth: true,
+      predictiveInsights: true,
+      deepSkillAnalytics: true,
+    },
+  }[userTier] || {
+    velocity: false,
+    fullSkillHealth: false,
+    predictiveInsights: false,
+    deepSkillAnalytics: false,
+  };
+
   // Loading State
   if (isLoading) {
     return (
@@ -198,23 +226,37 @@ export default function MomentumTrackerPage() {
         {/* Main Content */}
         <div className="space-y-12">
           {/* Stats Cards */}
-          {/* Stats Cards */}
-          <StatsCards data={momentumData} />
+          <StatsCards 
+            data={momentumData} 
+            tier={userTier}
+            entitlements={entitlements}
+          />
 
-          {/* 🏥 Skill Health Center - NEW */}
-          <SkillHealthDashboard />
+          {/* 🏥 Skill Health Center */}
+          <SkillHealthDashboard 
+            tier={userTier}
+            entitlements={entitlements}
+          />
 
           {/* Activity Heatmap */}
-          <ActivityHeatmap activityData={momentumData.activityData} />
+          <ActivityHeatmap data={momentumData.activityData} />
 
           {/* Progress Chart */}
           <ProgressChart data={momentumData.weeklyProgress} />
 
           {/* Skill Progress */}
-          <SkillProgressBars skills={momentumData.skills} />
+          <SkillProgressBars 
+            skills={momentumData.skills} 
+            tier={userTier}
+            entitlements={entitlements}
+          />
 
           {/* Achievements */}
-          <AchievementBadges achievements={momentumData.achievements} />
+          <AchievementBadges 
+            achievements={momentumData.achievements} 
+            tier={userTier}
+            entitlements={entitlements}
+          />
         </div>
       </div>
     </div>

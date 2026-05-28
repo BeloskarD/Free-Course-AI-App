@@ -49,6 +49,9 @@ import ToolActionModal from "../../components/momentum/ToolActionModal";
 import Skeleton from "../../components/ui/Skeleton";
 import PageTransition from "../../components/ui/PageTransition";
 import { motion, AnimatePresence } from "framer-motion";
+import BlurCard from "../../components/monetization/BlurCard";
+import LockedOverlay from "../../components/monetization/LockedOverlay";
+import { upgradeModalActions } from "../../hooks/useUpgradeModal";
 
 // import { Youtube, BookMarked, FolderGit2 } from "lucide-react";
 
@@ -355,7 +358,20 @@ Return ONLY valid JSON.`;
     }
   }, [aiData, isFetching, lastSearchedQuery]);
 
-  const handleSafeOpen = (link, category) => {
+  const handleSafeOpen = (link, category, item = null) => {
+    const isLocked = displayData?.locked || 
+                     item?.locked || 
+                     item?.title?.toLowerCase().includes('locked') || 
+                     item?.description?.toLowerCase().includes('locked');
+    if (isLocked) {
+      upgradeModalActions.open({
+        featureName: `AI ${category.charAt(0).toUpperCase() + category.slice(1)}s`,
+        targetTier: 'pro',
+        upgradeHint: `Upgrade to Pro to unlock premium ${category} resources, production-ready blueprints, and step-by-step technical guides.`
+      });
+      return;
+    }
+
     if (!link || link === '#' || link === 'String' || link === 'URL' || link.includes('placeholder')) {
       setModalConfig({
         title: "Link Verification",
@@ -545,6 +561,15 @@ Return ONLY valid JSON.`;
   }, []);
 
   const handleSkillCourseSearch = useCallback((skill) => {
+    if (skill?.skill?.includes('Upgrade to Pro')) {
+      upgradeModalActions.open({
+        featureName: 'AI Skill Intelligence',
+        targetTier: 'pro',
+        upgradeHint: 'Upgrade to Pro to unlock deep skill analysis and tailored course paths.'
+      });
+      return;
+    }
+
     setSelectedSkill(skill);
     setDisplayedCoursesCount(COURSES_PER_PAGE);
 
@@ -807,22 +832,31 @@ Return ONLY valid JSON.`;
 
             {/* 1. CAREER IMPACT TELEMETRY */}
             {data.careerInsights && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {[
-                  { label: 'Target Roles', value: data.careerInsights.targetRoles?.slice(0, 1).join(''), sub: data.careerInsights.targetRoles?.slice(1, 2).join(''), icon: Briefcase, color: 'from-blue-600 to-indigo-700' },
-                  { label: 'Market Yield', value: data.careerInsights.salaryRange, sub: 'EST. ANNUAL RADIUS', icon: Award, color: 'from-emerald-600 to-teal-700' },
-                  { label: 'Time to Sync', value: data.careerInsights.readinessTime, sub: 'MASTERY WINDOW', icon: Clock, color: 'from-amber-500 to-orange-600' },
-                  { label: 'Sync Demand', value: data.careerInsights.demandLevel, sub: 'GLOBAL ACQUISITION', icon: TrendingUp, color: 'from-purple-600 to-indigo-600' }
-                ].map((item, i) => (
-                  <div key={i} className={`p-8 rounded-[2.5rem] bg-gradient-to-br ${item.color} text-white shadow-xl hover:shadow-2xl transition-all hover:-translate-y-2 cursor-pointer group relative overflow-hidden border border-white/5`}>
-                    <div className="absolute top-0 right-0 p-6 opacity-20 transition-transform group-hover:scale-125 group-hover:rotate-12 pointer-events-none">
-                      <item.icon size={48} strokeWidth={1} />
+              <div className="relative">
+                {displayData?.locked && (
+                  <LockedOverlay 
+                    message={displayData.message}
+                    upgradeHint={displayData.upgradeHint}
+                    className="rounded-[2.5rem] z-20"
+                  />
+                )}
+                <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 ${displayData?.locked ? 'blur-sm pointer-events-none' : ''}`}>
+                  {[
+                    { label: 'Target Roles', value: data.careerInsights.targetRoles?.slice(0, 1).join(''), sub: data.careerInsights.targetRoles?.slice(1, 2).join(''), icon: Briefcase, color: 'from-blue-600 to-indigo-700' },
+                    { label: 'Market Yield', value: data.careerInsights.salaryRange, sub: 'EST. ANNUAL RADIUS', icon: Award, color: 'from-emerald-600 to-teal-700' },
+                    { label: 'Time to Sync', value: data.careerInsights.readinessTime, sub: 'MASTERY WINDOW', icon: Clock, color: 'from-amber-500 to-orange-600' },
+                    { label: 'Sync Demand', value: data.careerInsights.demandLevel, sub: 'GLOBAL ACQUISITION', icon: TrendingUp, color: 'from-purple-600 to-indigo-600' }
+                  ].map((item, i) => (
+                    <div key={i} className={`p-8 rounded-[2.5rem] bg-gradient-to-br ${item.color} text-white shadow-xl hover:shadow-2xl transition-all hover:-translate-y-2 cursor-pointer group relative overflow-hidden border border-white/5`}>
+                      <div className="absolute top-0 right-0 p-6 opacity-20 transition-transform group-hover:scale-125 group-hover:rotate-12 pointer-events-none">
+                        <item.icon size={48} strokeWidth={1} />
+                      </div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/50 mb-4">{item.label}</p>
+                      <p className="text-2xl font-black tracking-tight mb-1">{item.value}</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-white/40">{item.sub}</p>
                     </div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/50 mb-4">{item.label}</p>
-                    <p className="text-2xl font-black tracking-tight mb-1">{item.value}</p>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-white/40">{item.sub}</p>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
 
@@ -841,54 +875,61 @@ Return ONLY valid JSON.`;
 
                 <div className="grid gap-8">
                   {data.skillBreakdown.map((skill, i) => (
-                    <div
+                    <BlurCard 
                       key={i}
-                      className="p-10 rounded-[3rem] bg-[var(--card-bg)] border border-[var(--card-border)] hover:border-[var(--accent-primary)]/40 hover:shadow-[var(--shadow-elite)] transition-all group relative overflow-hidden"
+                      isLocked={skill.locked || displayData?.locked}
+                      message={displayData?.message}
+                      upgradeHint={displayData?.upgradeHint}
+                      className="rounded-[3rem]"
                     >
-                      <div className="absolute -right-20 -bottom-20 w-64 h-64 bg-[var(--accent-primary)]/5 rounded-full blur-[80px]" />
+                      <div
+                        className="p-10 rounded-[3rem] bg-[var(--card-bg)] border border-[var(--card-border)] hover:border-[var(--accent-primary)]/40 hover:shadow-[var(--shadow-elite)] transition-all group relative overflow-hidden"
+                      >
+                        <div className="absolute -right-20 -bottom-20 w-64 h-64 bg-[var(--accent-primary)]/5 rounded-full blur-[80px]" />
 
-                      <div className="flex flex-col lg:flex-row lg:items-center gap-10 relative z-10">
-                        <div className="flex-1 space-y-6">
-                          <div className="flex flex-wrap items-center gap-4">
-                            <span className={`px-5 py-2 rounded-xl bg-gradient-to-r ${priorityColors[skill.priority]} text-white text-[10px] font-black uppercase tracking-widest shadow-xl`}>
-                              {skill.priority} Priority
-                            </span>
-                            <span className="flex items-center gap-2 px-4 py-2 bg-[var(--site-text)]/5 rounded-xl text-[10px] font-black text-[var(--site-text-muted)] uppercase tracking-wider border border-[var(--card-border)]">
-                              {demandIcons[skill.marketDemand]} {skill.marketDemand} Demand
-                            </span>
-                            <span className="flex items-center gap-2 px-4 py-2 bg-[var(--site-text)]/5 rounded-xl text-[10px] font-black text-[var(--site-text-muted)] uppercase tracking-wider border border-[var(--card-border)]">
-                              <Clock size={14} className="text-indigo-500" /> {skill.estimatedTime}
-                            </span>
+                        <div className="flex flex-col lg:flex-row lg:items-center gap-10 relative z-10">
+                          <div className="flex-1 space-y-6">
+                            <div className="flex flex-wrap items-center gap-4">
+                              <span className={`px-5 py-2 rounded-xl bg-gradient-to-r ${priorityColors[skill.priority]} text-white text-[10px] font-black uppercase tracking-widest shadow-xl`}>
+                                {skill.priority} Priority
+                              </span>
+                              <span className="flex items-center gap-2 px-4 py-2 bg-[var(--site-text)]/5 rounded-xl text-[10px] font-black text-[var(--site-text-muted)] uppercase tracking-wider border border-[var(--card-border)]">
+                                {demandIcons[skill.marketDemand]} {skill.marketDemand} Demand
+                              </span>
+                              <span className="flex items-center gap-2 px-4 py-2 bg-[var(--site-text)]/5 rounded-xl text-[10px] font-black text-[var(--site-text-muted)] uppercase tracking-wider border border-[var(--card-border)]">
+                                <Clock size={14} className="text-indigo-500" /> {skill.estimatedTime}
+                              </span>
+                            </div>
+
+                            <h3 className="text-4xl font-black text-[var(--site-text)] tracking-tight group-hover:text-[var(--accent-primary)] transition-colors">
+                              {skill.skill}
+                            </h3>
+
+                            <p className="text-lg leading-relaxed text-[var(--site-text-muted)] font-bold opacity-80 max-w-4xl">
+                              {skill.explanation}
+                            </p>
+
+                            {skill.prerequisites?.length > 0 && (
+                              <div className="pt-4 flex flex-wrap gap-3">
+                                {skill.prerequisites.map((prereq, j) => (
+                                  <span key={j} className="px-3 py-1.5 bg-[var(--accent-primary)]/5 text-[var(--accent-primary)] rounded-lg text-xs font-black uppercase tracking-widest border border-[var(--accent-primary)]/10">
+                                    {prereq}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
 
-                          <h3 className="text-4xl font-black text-[var(--site-text)] tracking-tight group-hover:text-[var(--accent-primary)] transition-colors">
-                            {skill.skill}
-                          </h3>
-
-                          <p className="text-lg leading-relaxed text-[var(--site-text-muted)] font-bold opacity-80 max-w-4xl">
-                            {skill.explanation}
-                          </p>
-
-                          {skill.prerequisites?.length > 0 && (
-                            <div className="pt-4 flex flex-wrap gap-3">
-                              {skill.prerequisites.map((prereq, j) => (
-                                <span key={j} className="px-3 py-1.5 bg-[var(--accent-primary)]/5 text-[var(--accent-primary)] rounded-lg text-xs font-black uppercase tracking-widest border border-[var(--accent-primary)]/10">
-                                  {prereq}
-                                </span>
-                              ))}
-                            </div>
-                          )}
+                          <button
+                            onClick={() => handleSkillCourseSearch(skill)}
+                            className="lg:w-64 py-6 bg-[var(--site-text)] text-[var(--card-bg)] font-black rounded-3xl text-xs uppercase tracking-[0.2em] transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center gap-3 whitespace-nowrap btn-tactile group/btn"
+                          >
+                            {skill?.skill?.includes('Upgrade to Pro') ? 'Upgrade to Pro' : 'Find Courses'}
+                            <ArrowRight size={18} className="transition-transform group-hover/btn:translate-x-1" />
+                          </button>
                         </div>
-
-                        <button
-                          onClick={() => handleSkillCourseSearch(skill)}
-                          className="lg:w-64 py-6 bg-[var(--site-text)] text-[var(--card-bg)] font-black rounded-3xl text-xs uppercase tracking-[0.2em] transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center gap-3 whitespace-nowrap btn-tactile group/btn"
-                        >
-                          Find Courses
-                          <ArrowRight size={18} className="transition-transform group-hover/btn:translate-x-1" />
-                        </button>
                       </div>
-                    </div>
+                    </BlurCard>
                   ))}
                 </div>
               </div>
@@ -908,42 +949,49 @@ Return ONLY valid JSON.`;
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                   {data.roadmap.map((phase, i) => (
-                    <div
+                    <BlurCard
                       key={i}
-                      className="relative p-10 rounded-[3rem] bg-[var(--card-bg)] border border-[var(--card-border)] hover:border-purple-500/30 transition-all hover:-translate-y-4 hover:shadow-[var(--shadow-elite)] group cursor-pointer"
+                      isLocked={phase.locked || displayData?.locked}
+                      message={displayData?.message}
+                      upgradeHint={displayData?.upgradeHint}
+                      className="rounded-[3rem]"
                     >
-                      <div className="absolute -top-6 -left-6 w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-600 to-blue-700 text-white font-black text-xl flex items-center justify-center shadow-xl z-20 border-4 border-[var(--site-bg)] group-hover:scale-110 transition-transform">
-                        {i + 1}
-                      </div>
+                      <div
+                        className="relative p-10 rounded-[3rem] bg-[var(--card-bg)] border border-[var(--card-border)] hover:border-purple-500/30 transition-all hover:-translate-y-4 hover:shadow-[var(--shadow-elite)] group cursor-pointer"
+                      >
+                        <div className="absolute -top-6 -left-6 w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-600 to-blue-700 text-white font-black text-xl flex items-center justify-center shadow-xl z-20 border-4 border-[var(--site-bg)] group-hover:scale-110 transition-transform">
+                          {i + 1}
+                        </div>
 
-                      <div className="mt-6 space-y-6">
-                        <div>
-                          <h3 className="text-2xl font-black text-[var(--site-text)] mb-2 group-hover:text-purple-600 transition-colors tracking-tight">
-                            {phase.phase}
-                          </h3>
-                          <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-purple-500/20">
-                            <Clock size={12} strokeWidth={2.5} />
-                            {phase.duration} System Sync
+                        <div className="mt-6 space-y-6">
+                          <div>
+                            <h3 className="text-2xl font-black text-[var(--site-text)] mb-2 group-hover:text-purple-600 transition-colors tracking-tight">
+                              {phase.phase}
+                            </h3>
+                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-purple-500/20">
+                              <Clock size={12} strokeWidth={2.5} />
+                              {phase.duration} System Sync
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            {phase.skills?.map((skill, j) => (
+                              <div key={j} className="flex items-center gap-3 text-sm text-[var(--site-text-muted)] font-bold">
+                                <CheckCircle2 size={16} className="text-emerald-500 flex-shrink-0" />
+                                {skill}
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="pt-6 border-t border-[var(--card-border)]">
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[var(--site-text-muted)] opacity-60 mb-3">Target Milestone</p>
+                            <p className="text-sm font-black text-[var(--site-text)] leading-relaxed opacity-90">
+                              {phase.milestone}
+                            </p>
                           </div>
                         </div>
-
-                        <div className="space-y-3">
-                          {phase.skills?.map((skill, j) => (
-                            <div key={j} className="flex items-center gap-3 text-sm text-[var(--site-text-muted)] font-bold">
-                              <CheckCircle2 size={16} className="text-emerald-500 flex-shrink-0" />
-                              {skill}
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="pt-6 border-t border-[var(--card-border)]">
-                          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[var(--site-text-muted)] opacity-60 mb-3">Target Milestone</p>
-                          <p className="text-sm font-black text-[var(--site-text)] leading-relaxed opacity-90">
-                            {phase.milestone}
-                          </p>
-                        </div>
                       </div>
-                    </div>
+                    </BlurCard>
                   ))}
                 </div>
               </div>
@@ -1035,7 +1083,7 @@ Return ONLY valid JSON.`;
               </div>
             )}
 
-            {/* YouTube Video Tutorials - NEW SECTION */}
+            {/* YouTube Video Tutorials */}
             {data.youtubeVideos && data.youtubeVideos.length > 0 && (
               <div id="youtube-section">
                 <h2 className="text-3xl md:text-4xl font-black text-[var(--site-text)] mb-10 flex items-center gap-4">
@@ -1050,7 +1098,7 @@ Return ONLY valid JSON.`;
                     <YouTubeVideoCard
                       key={i}
                       video={video}
-                      onClick={() => handleSafeOpen(video.link || video.url, "video")}
+                      onClick={() => handleSafeOpen(video.link || video.url, "video", video)}
                       isSaved={isCourseAlreadySaved(video.title)}
                       onSaveSuccess={handleSaveSuccess}
                       onRemoveSuccess={handleSaveSuccess}
@@ -1060,7 +1108,7 @@ Return ONLY valid JSON.`;
               </div>
             )}
 
-            {/* Learning Resources - NEW SECTION */}
+            {/* Learning Resources */}
             {data.resources && data.resources.length > 0 && (
               <div id="resources-section">
                 <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
@@ -1078,14 +1126,14 @@ Return ONLY valid JSON.`;
                     <ResourceCard
                       key={i}
                       resource={resource}
-                      onClick={() => handleSafeOpen(resource.link || resource.url, "resource")}
+                      onClick={() => handleSafeOpen(resource.link || resource.url, "resource", resource)}
                     />
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Practice Projects - NEW SECTION */}
+            {/* Practice Projects */}
             {data.practiceProjects && data.practiceProjects.length > 0 && (
               <div id="projects-section">
                 <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
@@ -1103,7 +1151,7 @@ Return ONLY valid JSON.`;
                     <ProjectCard
                       key={i}
                       project={project}
-                      onClick={() => handleSafeOpen(project.link || project.url, "project")}
+                      onClick={() => handleSafeOpen(project.link || project.url, "project", project)}
                     />
                   ))}
                 </div>
@@ -1137,7 +1185,7 @@ Return ONLY valid JSON.`;
                       <div className="relative z-10 flex flex-col h-full">
                         <div className="flex flex-wrap sm:flex-nowrap justify-between items-start gap-4 mb-8 sm:mb-10">
                           <div className="flex items-center gap-2 sm:gap-3">
-                            {/* Comparison Selection Checkbox (Moved to left to prevent right-side overflow) */}
+                            {/* Comparison Selection Checkbox */}
                             <button
                               onClick={(e) => { e.stopPropagation(); toggleCompare(tool.name); }}
                               className={`
@@ -1234,7 +1282,7 @@ Return ONLY valid JSON.`;
               </div>
             )}
 
-            {/* LEARNING VELOCITY - ELITE TELEMETRY PANEL */}
+            {/* LEARNING VELOCITY */}
             {velocityData?.success && (
               <div className="mb-20 animate-in fade-in slide-in-from-bottom-10 duration-1000">
                 <div className="flex items-center gap-4 mb-10 justify-center md:justify-start">
@@ -1251,7 +1299,6 @@ Return ONLY valid JSON.`;
                 </div>
 
                 <Surface className="p-10 md:p-12 rounded-[3.5rem] bg-[var(--card-bg)]/40 backdrop-blur-3xl border border-[var(--card-border)] shadow-[var(--shadow-elite)] group/velocity overflow-hidden relative">
-                  {/* Subtle Background Glow */}
                   <div className="absolute -right-20 -top-20 w-80 h-80 bg-amber-500/5 rounded-full blur-[100px] pointer-events-none group-hover/velocity:bg-amber-500/10 transition-colors duration-1000" />
 
                   <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1285,8 +1332,6 @@ Return ONLY valid JSON.`;
                             </div>
                           </div>
                         </div>
-
-                        {/* Interactive Sparkle on Hover */}
                         <div className="absolute top-6 right-6 opacity-0 group-hover/stat:opacity-100 transition-opacity duration-500">
                           <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
                         </div>
@@ -1294,7 +1339,6 @@ Return ONLY valid JSON.`;
                     ))}
                   </div>
 
-                  {/* AI INSIGHT FOOTER */}
                   <div className="mt-10 pt-8 border-t border-[var(--card-border)] flex flex-col md:flex-row items-center gap-6">
                     <div className="flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-amber-500/5 border border-amber-500/10">
                       <Zap size={16} className="text-amber-600 animate-pulse" />
@@ -1311,7 +1355,6 @@ Return ONLY valid JSON.`;
             {/* Market Outlook */}
             {data.careerInsights?.marketOutlook && (
               <div className="relative p-12 rounded-[3.5rem] bg-gradient-to-br from-indigo-500 to-blue-700 text-white overflow-hidden shadow-2xl group">
-                {/* Elite Background Detail */}
                 <div className="absolute -right-32 -top-32 w-96 h-96 bg-white/10 rounded-full blur-[100px] group-hover:scale-150 transition-transform duration-1000" />
                 <div className="absolute -left-32 -bottom-32 w-96 h-96 bg-blue-400/20 rounded-full blur-[100px]" />
 
@@ -1357,7 +1400,6 @@ Return ONLY valid JSON.`;
         type={modalConfig.type}
       />
 
-      {/* Tool Action Modal Integration */}
       {selectedTool && (
         <ToolActionModal
           tool={selectedTool}
@@ -1365,7 +1407,6 @@ Return ONLY valid JSON.`;
         />
       )}
 
-      {/* Comparison Result Panel - Ported from AI Tools for exact look & feel */}
       <AnimatePresence>
       {comparisonResult && comparisonResult.type === 'structured' && (
         <motion.div
@@ -1376,12 +1417,9 @@ Return ONLY valid JSON.`;
           className="fixed inset-0 z-[10001] flex p-3 sm:p-4 md:p-6 overflow-hidden"
           onClick={() => { setComparisonResult(null); setSelectedForComparison([]); }}
         >
-          {/* Backdrop */}
           <div className="absolute inset-0 bg-black/80 dark:bg-black/90 backdrop-blur-xl" />
 
-          {/* Layout Wrapper to center relative to sidebar */}
           <div className="relative w-full h-full flex items-start justify-center max-lg:pl-0 lg:pl-[var(--sidebar-offset,0px)] pt-20 pb-4 md:pt-[104px] md:pb-8 pointer-events-none transition-all duration-500">
-            {/* Modal Container */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 30 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1390,7 +1428,6 @@ Return ONLY valid JSON.`;
               className="relative w-full max-w-[95vw] sm:max-w-[90vw] md:max-w-3xl lg:max-w-4xl my-auto bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl sm:rounded-2xl md:rounded-[2rem] shadow-2xl overflow-hidden pointer-events-auto flex flex-col max-h-full"
               onClick={(e) => e.stopPropagation()}
             >
-            {/* Header */}
             <div className="flex justify-between items-center p-3 sm:p-4 md:p-5 border-b border-[var(--card-border)] bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-blue-500/10">
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
@@ -1409,9 +1446,7 @@ Return ONLY valid JSON.`;
               </button>
             </div>
 
-            {/* Content */}
             <div className="p-3 sm:p-4 md:p-5 overflow-y-auto max-h-[60vh] sm:max-h-[65vh] md:max-h-[70vh] custom-comparison-scroll">
-              {/* Quick Takeaway Banner */}
               {comparisonResult.data.quickTakeaway && (
                 <div className="mb-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20">
                   <div className="flex items-start gap-3">
@@ -1423,7 +1458,6 @@ Return ONLY valid JSON.`;
                 </div>
               )}
 
-              {/* Tool Comparison Cards Grid */}
               <div className={`grid gap-4 sm:gap-6 mb-6 ${comparisonResult.data.toolsComparison?.length === 2
                 ? 'grid-cols-1 md:grid-cols-2'
                 : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
@@ -1433,7 +1467,6 @@ Return ONLY valid JSON.`;
                     key={tool.name || index}
                     className="p-5 sm:p-6 rounded-2xl sm:rounded-[1.5rem] bg-[var(--site-bg)] border border-[var(--card-border)] hover:border-[var(--accent-primary)]/30 transition-all hover:shadow-lg group"
                   >
-                    {/* Tool Header */}
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
                         <h5 className="text-lg sm:text-xl font-black text-[var(--site-text)] tracking-tight mb-1 group-hover:text-[var(--accent-primary)] transition-colors">
@@ -1449,7 +1482,6 @@ Return ONLY valid JSON.`;
                       </div>
                     </div>
 
-                    {/* Pricing */}
                     <div className="flex items-center gap-2 mb-4 p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
                       <DollarSign size={16} className="text-emerald-500" />
                       <span className="text-xs sm:text-sm font-bold text-[var(--site-text)]">{tool.pricing || 'Check website'}</span>
@@ -1461,7 +1493,6 @@ Return ONLY valid JSON.`;
                       )}
                     </div>
 
-                    {/* Key Features */}
                     <div className="mb-4">
                       <div className="flex items-center gap-2 mb-2">
                         <ZapIcon size={14} className="text-indigo-500" />
@@ -1477,7 +1508,6 @@ Return ONLY valid JSON.`;
                       </ul>
                     </div>
 
-                    {/* Best For */}
                     {tool.bestFor && (
                       <div className="mb-4 p-3 rounded-xl bg-blue-500/5 border border-blue-500/10">
                         <div className="flex items-center gap-2 mb-1">
@@ -1488,7 +1518,6 @@ Return ONLY valid JSON.`;
                       </div>
                     )}
 
-                    {/* Pros & Cons */}
                     <div className="grid grid-cols-2 gap-3">
                       <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
                         <div className="flex items-center gap-1.5 mb-2">
@@ -1514,7 +1543,6 @@ Return ONLY valid JSON.`;
                       </div>
                     </div>
 
-                    {/* Visit Website Link */}
                     {(tool.url || tool.official_link || tool.link) && (
                       <div className="mt-6 pt-6 border-t border-[var(--card-border)]/50">
                         <a
@@ -1532,7 +1560,6 @@ Return ONLY valid JSON.`;
                 ))}
               </div>
 
-              {/* Recommendation */}
               {comparisonResult.data.recommendation && (
                 <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-blue-500/10 border border-indigo-500/20">
                   <div className="flex items-start gap-4">
@@ -1555,7 +1582,6 @@ Return ONLY valid JSON.`;
       )}
       </AnimatePresence>
 
-      {/* Floating Compare Button - Positioned to clear sidebar and AI Companion */}
       {selectedForComparison.length >= 2 && !comparisonResult && (
         <button
           onClick={runComparison}
@@ -1574,7 +1600,6 @@ Return ONLY valid JSON.`;
         </button>
       )}
 
-      {/* Scrollbar styles moved to globals.css to prevent hydration mismatch */}
     </div>
   );
 }
@@ -1601,4 +1626,3 @@ export default function AIIntelligencePage() {
     </Suspense>
   );
 }
-

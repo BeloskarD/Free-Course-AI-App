@@ -29,7 +29,13 @@ function calculateEntropy(skill) {
 
     const lambda = Math.max(0.05, (skill.learningVelocity || 0) * 0.5 + 0.05);
     const mu = skill.decayRate || 0.02;
-    const E0 = skill.entropyRate ?? 1;
+    
+    // Reset baseline entropy if the skill was recently practiced (within last hour)
+    let E0 = skill.entropyRate ?? 1;
+    if (hoursSincePractice < 1) {
+        E0 = 0.1;
+    }
+    
     const C = skill.confidenceWeight || 0;
 
     const learningDecay = E0 * Math.exp(-lambda * Math.min(hoursSincePractice, 720));

@@ -158,6 +158,22 @@ class UserService {
 
         return await userRepository.update(userId, { savedAnalyses });
     }
+
+    /**
+     * Update User Subscription Tier (Dev/Admin Tool)
+     */
+    async updateTier(userId, tier) {
+        const validTiers = ['free', 'pro', 'career_plus'];
+        if (!validTiers.includes(tier)) {
+            throw new Error(`Invalid tier: ${tier}. Must be one of ${validTiers.join(', ')}`);
+        }
+
+        return await userRepository.update(userId, { 
+            subscriptionTier: tier,
+            'billing.subscriptionPlan': tier,
+            'billing.subscriptionStatus': tier === 'free' ? 'inactive' : 'active'
+        });
+    }
 }
 
 export default new UserService();

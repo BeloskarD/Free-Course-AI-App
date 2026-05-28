@@ -1,7 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useAuth } from "../../../context/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Surface from "../../../components/ui/Surface";
 import Breadcrumb from "../../../components/ui/Breadcrumb";
 import {
@@ -39,7 +39,7 @@ const TwitterIcon = ({ size = 20 }) => (
   </svg>
 );
 
-export default function LoginPage() {
+function LoginPageContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLogin, setIsLogin] = useState(true);
@@ -49,6 +49,8 @@ export default function LoginPage() {
   const [providers, setProviders] = useState({ google: false, github: false, twitter: false });
   const { login, register } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get("redirect") || "/mission-home";
   const [showModal, setShowModal] = useState(false);
   const [modalConfig, setModalConfig] = useState({
     title: "",
@@ -76,7 +78,7 @@ export default function LoginPage() {
       ? await login(email, password)
       : await register(email, password);
     if (success) {
-      router.push("/mission-home");
+      router.push(redirectUrl);
     } else {
       setModalConfig({
         title: "Authentication Failed",
@@ -299,5 +301,17 @@ export default function LoginPage() {
         type={modalConfig.type}
       />
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[var(--site-bg)]">
+        <Loader2 className="animate-spin text-indigo-600" size={32} />
+      </div>
+    }>
+      <LoginPageContent />
+    </Suspense>
   );
 }

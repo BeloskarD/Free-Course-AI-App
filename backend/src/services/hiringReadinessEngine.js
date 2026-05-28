@@ -127,6 +127,7 @@ class HiringReadinessEngine {
         score: finalScore,
         confidence,
         benchmarking,
+        targetRole,
         weights: {
           skills: Math.round(weights.skills * 100),
           projects: Math.round(weights.projects * 100),

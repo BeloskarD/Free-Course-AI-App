@@ -197,6 +197,7 @@ async function callAIWithMetadata(prompt, systemPrompt = "You are an ATS-complia
  */
 export async function processResumeGeneration(jobData) {
     const { userId, target_role, job_description, custom_sections, push_to_rx } = jobData;
+    console.log(`[Worker] 🚀 Starting Resume Generation for user ${userId}. Push to Rx: ${push_to_rx}`);
 
     const profile = await LearnerProfile.findOne({ userId });
     if (!profile) throw new Error("Profile not found");
@@ -229,11 +230,13 @@ Return JSON: {
   "recruiter_impact": 82,
   "market_alignment": 90,
   "strategic_reasoning": "...",
+  "market_insights": "Detailed analysis of current hiring trends, salary benchmarks, and competitive positioning for this specific role.",
   "extracted_keywords": [],
   "optimized_experience": [ { "company": "...", "description": "..." } ],
   "optimized_projects": [ { "name": "...", "description": "..." } ],
   "reactive_resume_metadata": { "template": "onyx", "accentColor": "#4f46e5" }
 }
+(Note: market_insights should be a 2-3 sentence strategic overview of the market demand and positioning for this role.)
 (Note: recruiter_impact and market_alignment should be 0-100 scores based on how strongly the profile matches the market expectations for the target role.)`;
 
     // Explicitly scope variables to prevent ReferenceErrors if destructuring fails
@@ -257,7 +260,12 @@ Return JSON: {
     if (push_to_rx) {
         try {
             console.log("📤 Pushing to Rx API (import)");
-            const response = await axios.post(`${RX_API_BASE}/resumes/import`, { data: rxPayload.data }, {
+            // FIX: Send name and slug at root, and data containing the resume content
+            const response = await axios.post(`${RX_API_BASE}/resumes/import`, { 
+                name: rxPayload.name,
+                slug: rxPayload.slug,
+                data: rxPayload.data 
+            }, {
                 headers: {
                     'Content-Type': 'application/json',
                     'x-api-key': process.env.REACTIVE_RESUME_API_KEY
@@ -269,8 +277,9 @@ Return JSON: {
                 id: resumeId,
                 url: `https://rxresu.me/builder/${resumeId}`
             };
+            console.log(`[Worker] ✅ Rx Push Success: ${rxResponse.url}`);
         } catch (apiErr) {
-            console.error("❌ Rx API Push Failed Detailed");
+            console.error("❌ Rx API Push Failed Detailed:", apiErr.response?.data || apiErr.message);
             rxResponse = {
                 error: "Reactive Resume API Error",
                 details: apiErr.response?.data?.message || apiErr.message,
@@ -280,9 +289,12 @@ Return JSON: {
     }
 
     // This object is saved into the job document's "result" field
-    return {
+    const finalResult = {
         success: true,
-        data: aiResult,
+        data: {
+            ...aiResult,
+            rx_api_response: rxResponse // Duplicate here for easy access in frontend
+        },
         provider: provider,
         model: model, // Detailed model name (gpt-4.1, gpt-4o-mini, etc.)
         source: 'primary-engine',
@@ -290,6 +302,9 @@ Return JSON: {
         rx_api_response: rxResponse,
         timestamp: new Date().toISOString()
     };
+
+    console.log(`[Worker] 🏁 Returning Result. Success: ${finalResult.success}, Has Rx URL: ${!!finalResult.rx_api_response?.url}`);
+    return finalResult;
 }
 
 /**
@@ -337,6 +352,7 @@ export async function resumeOrchestrator(req, res) {
 /**
  * MAPPING LOGIC (RxResu.me v5 OpenAPI Schema)
  * Exhaustive mapping to avoid "Input validation failed" (400)
+ * and ensure full rendering without "black screen" errors.
  */
 function mapToReactiveResume(profile, aiResult, target_role, context) {
     const portfolio = profile.portfolio || {};
@@ -344,13 +360,29 @@ function mapToReactiveResume(profile, aiResult, target_role, context) {
     const resumeId = `resume-${timestamp}`;
 
     // Helper for empty strings/objects to satisfy strict validation
-    const emptyWebsite = { url: "", label: "" };
+    const emptyWebsite = { url: "", label: "", inlineLink: false };
     const defaultOptions = { showLinkInTitle: false };
     const generateId = () => Math.random().toString(36).substr(2, 9);
 
+    // Color conversion helper (hex to rgba)
+    const hexToRgba = (hex, alpha = 1) => {
+        if (!hex) return `rgba(79, 70, 229, ${alpha})`;
+        let r = 0, g = 0, b = 0;
+        if (hex.length === 4) {
+            r = parseInt(hex[1] + hex[1], 16);
+            g = parseInt(hex[2] + hex[2], 16);
+            b = parseInt(hex[3] + hex[3], 16);
+        } else if (hex.length === 7) {
+            r = parseInt(hex.substring(1, 3), 16);
+            g = parseInt(hex.substring(3, 5), 16);
+            b = parseInt(hex.substring(5, 7), 16);
+        }
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    };
+
     // Valid template names per v5 spec enum
-    const VALID_TEMPLATES = ['azurill', 'bronzor', 'chikorita', 'ditgar', 'ditto', 'gengar', 'glalie', 'kakuna', 'lapras', 'leafish', 'onyx', 'pikachu', 'rhyhorn'];
-    const pickTemplate = (suggested) => VALID_TEMPLATES.includes(suggested) ? suggested : 'azurill';
+    const VALID_TEMPLATES = ['azurill', 'bronzor', 'chikorita', 'ditgar', 'ditto', 'gengar', 'glalie', 'kakuna', 'lapras', 'leafish', 'meowth', 'onyx', 'pikachu', 'rhyhorn'];
+    const pickTemplate = (suggested) => VALID_TEMPLATES.includes(suggested) ? suggested : 'onyx';
 
     return {
         name: portfolio.contactInfo?.name ? `${portfolio.contactInfo.name} - ${target_role}` : `Resume - ${target_role}`,
@@ -363,9 +395,9 @@ function mapToReactiveResume(profile, aiResult, target_role, context) {
                 rotation: 0,
                 aspectRatio: 1,
                 borderRadius: 0,
-                borderColor: "#000000",
+                borderColor: "rgba(0, 0, 0, 1)",
                 borderWidth: 0,
-                shadowColor: "#000000",
+                shadowColor: "rgba(0, 0, 0, 1)",
                 shadowWidth: 0
             },
             basics: {
@@ -388,18 +420,18 @@ function mapToReactiveResume(profile, aiResult, target_role, context) {
                     title: "Experience",
                     columns: 1,
                     hidden: false,
-                    items: context.experience.map(exp => {
+                    items: (context.experience || []).map(exp => {
                         const optimized = aiResult?.optimized_experience?.find(o => o.company === exp.company);
                         return {
                             id: generateId(),
                             hidden: false,
-                            options: defaultOptions,
                             company: exp.company || exp.role || "Company",
                             position: exp.role || "",
                             location: exp.location || "",
                             period: exp.date || `${exp.startDate || ""} - ${exp.endDate || ""}` || "",
                             website: emptyWebsite,
-                            description: optimized?.description || exp.description || ""
+                            description: optimized?.description || exp.description || "",
+                            roles: []
                         };
                     })
                 },
@@ -407,16 +439,15 @@ function mapToReactiveResume(profile, aiResult, target_role, context) {
                     title: "Projects",
                     columns: 1,
                     hidden: false,
-                    items: context.projects.map(p => {
+                    items: (context.projects || []).map(p => {
                         const optimized = aiResult?.optimized_projects?.find(o => o.name === p.title);
                         return {
                             id: generateId(),
                             hidden: false,
-                            options: defaultOptions,
                             name: p.title || "Project",
                             description: optimized?.description || p.description || "",
                             period: p.period || `${p.startDate || ""} - ${p.endDate || ""}` || "",
-                            website: { url: p.link || "", label: "Link" }
+                            website: emptyWebsite
                         };
                     })
                 },
@@ -427,7 +458,6 @@ function mapToReactiveResume(profile, aiResult, target_role, context) {
                     items: (portfolio.education || []).map(edu => ({
                         id: generateId(),
                         hidden: false,
-                        options: defaultOptions,
                         school: edu.institution || "School",
                         degree: edu.degree || "",
                         area: edu.fieldOfStudy || "",
@@ -442,14 +472,14 @@ function mapToReactiveResume(profile, aiResult, target_role, context) {
                     title: "Skills",
                     columns: 1,
                     hidden: false,
-                    items: context.skills.map(s => ({
+                    items: (context.skills || []).map(s => ({
                         id: generateId(),
                         hidden: false,
-                        options: defaultOptions,
+                        icon: "",
+                        iconColor: "",
                         name: s || "Skill",
                         proficiency: "Advanced",
                         level: 4,
-                        icon: "",
                         keywords: []
                     }))
                 },
@@ -457,12 +487,12 @@ function mapToReactiveResume(profile, aiResult, target_role, context) {
                     title: "Interests",
                     columns: 1,
                     hidden: false,
-                    items: context.interests.map(it => ({
+                    items: (context.interests || []).map(it => ({
                         id: generateId(),
                         hidden: false,
-                        options: defaultOptions,
-                        name: it || "Interest",
                         icon: "",
+                        iconColor: "",
+                        name: it || "Interest",
                         keywords: []
                     }))
                 },
@@ -478,17 +508,21 @@ function mapToReactiveResume(profile, aiResult, target_role, context) {
             metadata: {
                 template: pickTemplate(aiResult?.reactive_resume_metadata?.template),
                 layout: {
-                    sidebarWidth: 30,
+                    sidebarWidth: 35,
                     pages: [
-                        { fullWidth: false, main: ["experience", "projects", "education"], sidebar: ["basics", "skills", "interests"] }
+                        { 
+                            fullWidth: false, 
+                            main: ["summary", "experience", "projects", "education"], 
+                            sidebar: ["skills", "interests", "languages"] 
+                        }
                     ]
                 },
                 css: { enabled: false, value: "" },
                 page: {
                     gapX: 12,
                     gapY: 12,
-                    marginX: 12,
-                    marginY: 12,
+                    marginX: 16,
+                    marginY: 16,
                     format: "a4",
                     locale: "en-US",
                     hideIcons: false
@@ -496,9 +530,9 @@ function mapToReactiveResume(profile, aiResult, target_role, context) {
                 design: {
                     level: { icon: "circle", type: "hidden" },
                     colors: {
-                        primary: aiResult?.reactive_resume_metadata?.accentColor || "#4f46e5",
-                        text: "#000000",
-                        background: "#ffffff"
+                        primary: hexToRgba(aiResult?.reactive_resume_metadata?.accentColor || "#4f46e5"),
+                        text: "rgba(0, 0, 0, 1)",
+                        background: "rgba(255, 255, 255, 1)"
                     }
                 },
                 typography: {

@@ -7,6 +7,9 @@ import {
     Plus, Trash2, Heart, Rocket, Info, X
 } from 'lucide-react';
 import { api } from '../../services/api';
+import UpgradeInlineCTA from '../monetization/UpgradeInlineCTA';
+import BlurCard from '../monetization/BlurCard';
+import { upgradeModalActions } from '../../hooks/useUpgradeModal';
 
 export default function ResumeBuilder({ token, initialData }) {
     const [targetRole, setTargetRole] = useState(initialData?.targetRole || initialData?.portfolio?.headline || '');
@@ -19,9 +22,12 @@ export default function ResumeBuilder({ token, initialData }) {
     });
 
     const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
     const [result, setResult] = useState(null);
     const [status, setStatus] = useState({ type: '', message: '' });
     const [rxUrl, setRxUrl] = useState(null);
+    const [isLocked, setIsLocked] = useState(false);
+    const [upgradeHint, setUpgradeHint] = useState('');
 
     // Initial load from profile
     useEffect(() => {
@@ -33,11 +39,71 @@ export default function ResumeBuilder({ token, initialData }) {
             setSections({
                 experience: initialData.portfolio.experience || [],
                 projects: initialData.portfolio.customProjects || [],
-                skills: initialData.masteredSkills?.map(s => s.name) || [],
+                skills: initialData.portfolio.featuredSkills?.length ? initialData.portfolio.featuredSkills : (initialData.masteredSkills?.map(s => s.name) || []),
                 interests: []
             });
         }
     }, [initialData]);
+
+    const handleSaveHistory = async (silent = false) => {
+        if (!silent) {
+            setSaving(true);
+            setStatus({ type: 'info', message: '💾 Syncing career history to professional database...' });
+        }
+        try {
+            // Process experience: filter completely blank ones, ensure 'role' is populated for Mongoose schema requirement
+            const cleanExperience = (sections.experience || [])
+                .filter(exp => exp.company?.trim() || exp.role?.trim() || exp.description?.trim())
+                .map(exp => ({
+                    company: exp.company?.trim() || 'Undisclosed Company',
+                    role: exp.role?.trim() || 'Professional Role',
+                    description: exp.description?.trim() || '',
+                    accomplishments: exp.accomplishments || [],
+                    technologies: exp.technologies || []
+                }));
+
+            // Process projects: filter completely blank ones, ensure 'title' is populated for Mongoose schema requirement
+            const cleanProjects = (sections.projects || [])
+                .filter(p => p.title?.trim() || p.description?.trim())
+                .map(p => ({
+                    title: p.title?.trim() || 'Untitled Showcase Project',
+                    description: p.description?.trim() || '',
+                    technologies: p.technologies || []
+                }));
+
+            // Process skills: filter empty strings & duplicates
+            const cleanSkills = (sections.skills || [])
+                .map(s => s?.trim())
+                .filter((s, idx, self) => s && s.length > 0 && self.indexOf(s) === idx);
+
+            const payload = {
+                experience: cleanExperience,
+                customProjects: cleanProjects,
+                featuredSkills: cleanSkills,
+                headline: targetRole || initialData?.targetRole || ''
+            };
+
+            const data = await api.updatePortfolioSettings(payload, token);
+            if (data.success) {
+                if (!silent) {
+                    setStatus({ type: 'success', message: '✨ Career milestones deeply synced to MongoDB successfully!' });
+                }
+                return true;
+            } else {
+                throw new Error(data.error || 'Backend persistence validation failed');
+            }
+        } catch (err) {
+            console.error('❌ Deep persistence error:', err);
+            if (!silent) {
+                setStatus({ type: 'error', message: `❌ Save failed: ${err.message}` });
+            }
+            return false;
+        } finally {
+            if (!silent) {
+                setSaving(false);
+            }
+        }
+    };
 
     const handleGenerate = async (pushToRx = false) => {
         // Phase 4 Sync Update: Enforce validation
@@ -47,9 +113,13 @@ export default function ResumeBuilder({ token, initialData }) {
         }
 
         setLoading(true);
-        setStatus({ type: 'info', message: pushToRx ? '🚀 Pushing directly to Reactive Resume...' : '🥇 AI Orchestrator running...' });
+        setStatus({ type: 'info', message: pushToRx ? '🚀 Syncing data & pushing to Reactive Resume...' : '🥇 Syncing data & running AI Orchestrator...' });
+
+        // Auto-save history to DB before AI generation!
+        await handleSaveHistory(true);
 
         try {
+            console.log("📤 [ResumeBuilder] Sending Orchestrator Request:", { pushToRx, targetRole });
             const data = await api.resumeOrchestrator({
                 target_role: targetRole,
                 initial_target_role: initialData?.targetRole,
@@ -59,18 +129,41 @@ export default function ResumeBuilder({ token, initialData }) {
             }, token);
 
             if (data.success) {
+                console.log("✅ [ResumeBuilder] Orchestrator Success:", data);
                 console.log("%c🤖 AI Model Visibility Log (Resume Builder)", "color: #4f46e5; font-weight: bold; font-size: 1.2em;");
                 console.log(`%cProvider: %c${data.provider || 'default'}`, "font-weight: bold;", "color: #16a34a;");
                 if (data.model) {
                     console.log(`%cModel: %c${data.model}`, "font-weight: bold;", "color: #2563eb;");
                 }
                 
-                setResult(data.data);
-                if (data.rx_api_response?.url) {
-                    setRxUrl(data.rx_api_response.url);
+                // Set the result (AI insights) - robust to flattening
+                const resultData = data.data || data.result?.data || (data.ats_score ? data : null);
+                setResult(resultData);
+                setIsLocked(!!data.locked || !!data.result?.locked);
+                setUpgradeHint(data.upgradeHint || data.result?.upgradeHint || '');
+                
+                // Exhaustive check for the URL
+                const finalRxUrl = data.rx_api_response?.url || 
+                                 data.result?.rx_api_response?.url || 
+                                 data.data?.rx_api_response?.url ||
+                                 data.result?.data?.rx_api_response?.url;
+                
+                const rxError = data.rx_api_response?.error || data.result?.rx_api_response?.error || data.data?.rx_api_response?.error;
+
+                if (finalRxUrl) {
+                    console.log("🔗 [ResumeBuilder] Setting rxUrl:", finalRxUrl);
+                    setRxUrl(finalRxUrl);
                     setStatus({ type: 'success', message: '✨ Resume Created on rxresu.me! One click to style & PDF.' });
-                } else if (data.rx_api_response?.error) {
-                    setStatus({ type: 'error', message: `${data.rx_api_response.error}: ${data.rx_api_response.details || 'Unknown API issue'}` });
+                } else if (rxError) {
+                    setStatus({ type: 'error', message: `${rxError}: ${data.rx_api_response?.details || 'Unknown API issue'}` });
+                } else if (data.locked || data.result?.locked) {
+                    setStatus({ 
+                        type: 'success', 
+                        message: '✨ Optimization Complete! Upgrade to Pro to view and push your resume.' 
+                    });
+                } else if (pushToRx) {
+                    // If they wanted a push but no URL came back, it's a soft failure
+                    setStatus({ type: 'success', message: '✨ Optimized! Note: Push to Reactive AI was requested but no link returned.' });
                 } else {
                     setStatus({ type: 'success', message: '✨ Resume Optimized! Ready to push.' });
                 }
@@ -191,8 +284,12 @@ export default function ResumeBuilder({ token, initialData }) {
                 .rb-main {
                     padding: 40px;
                     display: grid;
-                    grid-template-columns: 1fr 380px;
+                    grid-template-columns: minmax(0, 1fr) 380px;
                     gap: 40px;
+                }
+
+                .rb-editor, .rb-sidebar {
+                    min-width: 0;
                 }
 
                 /* ═══════════════════════════════════════════
@@ -437,6 +534,36 @@ export default function ResumeBuilder({ token, initialData }) {
                     cursor: not-allowed;
                 }
 
+                .rb-action-save {
+                    width: 100%;
+                    padding: 18px;
+                    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                    color: white;
+                    border: none;
+                    border-radius: var(--rb-radius-sm);
+                    font-weight: 900;
+                    font-size: 0.85rem;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 10px;
+                    cursor: pointer;
+                    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                    box-shadow: 0 10px 20px rgba(16, 185, 129, 0.25);
+                }
+                .rb-action-save:hover:not(:disabled) {
+                    transform: translateY(-3px) scale(1.02);
+                    box-shadow: 0 15px 30px rgba(16, 185, 129, 0.4);
+                    cursor: pointer;
+                }
+                .rb-action-save:active { transform: translateY(0) scale(0.98); }
+                .rb-action-save:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                    transform: none;
+                    box-shadow: none;
+                }
+
                 .rb-action-secondary {
                     width: 100%;
                     padding: 16px;
@@ -581,7 +708,7 @@ export default function ResumeBuilder({ token, initialData }) {
 
                 /* <= 1280px: Tighten sidebar */
                 @media (max-width: 1280px) {
-                    .rb-main { grid-template-columns: 1fr 340px; gap: 32px; }
+                    .rb-main { grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; padding: 24px; }
                 }
 
                 /* <= 1024px: Stack layout */
@@ -803,6 +930,8 @@ export default function ResumeBuilder({ token, initialData }) {
                         </div>
                     )}
 
+                    {/* Success card removed to avoid duplicate View button - button is inside Orchestrator card below */}
+
                     <div className="rb-orchest-card">
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
                             <Sparkles size={22} style={{ opacity: 0.9 }} />
@@ -814,9 +943,20 @@ export default function ResumeBuilder({ token, initialData }) {
                         </p>
 
                         <button
+                            className="rb-action-save"
+                            onClick={() => handleSaveHistory(false)}
+                            disabled={loading || saving}
+                            style={{ marginBottom: '14px' }}
+                            type="button"
+                        >
+                            {saving ? "SAVING HISTORY..." : "SAVE CAREER HISTORY"}
+                            <Save size={18} />
+                        </button>
+
+                        <button
                             className="rb-action-primary"
                             onClick={() => handleGenerate(false)}
-                            disabled={loading}
+                            disabled={loading || saving}
                             style={{ marginBottom: '14px' }}
                             type="button"
                         >
@@ -824,25 +964,78 @@ export default function ResumeBuilder({ token, initialData }) {
                             <Zap size={18} />
                         </button>
 
-                        <button
-                            className="rb-action-secondary"
-                            onClick={() => handleGenerate(true)}
-                            disabled={loading || rxUrl}
-                            style={{ marginBottom: '24px' }}
-                            type="button"
-                        >
-                            <Rocket size={16} />
-                            PUSH TO REACTIVE RESUME
-                        </button>
+                        {rxUrl && (
+                            <a
+                                href={rxUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="rb-action-primary"
+                                style={{ 
+                                    background: '#10b981', 
+                                    color: 'white', 
+                                    textDecoration: 'none', 
+                                    display: 'inline-flex', 
+                                    marginBottom: '14px',
+                                    border: 'none'
+                                }}
+                            >
+                                <ExternalLink size={18} />
+                                VIEW ON RXRESU.ME
+                            </a>
+                        )}
+
+                        {(!rxUrl || rxUrl) && !isLocked && (
+                            <button
+                                className="rb-action-secondary"
+                                onClick={() => handleGenerate(true)}
+                                disabled={loading}
+                                style={{ marginBottom: '24px' }}
+                                type="button"
+                            >
+                                <Rocket size={16} />
+                                {loading ? "PREPARING PUSH..." : rxUrl ? "RE-PUSH TO REACTIVE RESUME" : "PUSH TO REACTIVE RESUME"}
+                            </button>
+                        )}
+
+                        {isLocked && (
+                            <div style={{ marginBottom: '24px' }}>
+                                <UpgradeInlineCTA 
+                                    tier="pro"
+                                    title="Unlock AI Resume"
+                                    subtitle={upgradeHint || "Upgrade to Pro to view your optimized resume and push directly to RxResu.me."}
+                                    source="resume_builder"
+                                    isCompact={true}
+                                />
+                            </div>
+                        )}
 
                         <div className="rb-reco-panel" style={{ padding: '20px' }}>
                             <div className="rb-reco-badge" style={{ marginBottom: '16px' }}>
                                 <Info size={13} />
                                 Master AI Insights
+                                {isLocked && (
+                                    <span style={{ 
+                                        marginLeft: 'auto', 
+                                        fontSize: '8px', 
+                                        background: 'rgba(255,255,255,0.1)', 
+                                        padding: '2px 6px', 
+                                        borderRadius: '4px',
+                                        color: '#818cf8'
+                                    }}>
+                                        PRO FEATURE
+                                    </span>
+                                )}
                             </div>
                             
                             {result ? (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                <BlurCard 
+                                    isLocked={isLocked}
+                                    title="Full AI Insights"
+                                    featureName="resume_insights"
+                                    tier="pro"
+                                    className="border-none bg-transparent p-0"
+                                >
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                     {/* Score Metrics Section */}
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
                                         {/* ATS Score */}
@@ -895,9 +1088,19 @@ export default function ResumeBuilder({ token, initialData }) {
                                     </div>
 
                                     {/* Strategic Reasoning */}
-                                    {result.strategic_reasoning && (
-                                        <div style={{ fontSize: '10px', fontStyle: 'italic', opacity: 0.8, linePadding: '1.4', borderLeft: '2px solid #fbbf24', paddingLeft: '10px' }}>
-                                            "{result.strategic_reasoning}"
+                                    {(result.strategic_reasoning || result.market_insights) && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', borderLeft: '2px solid #fbbf24', paddingLeft: '10px' }}>
+                                            {result.strategic_reasoning && (
+                                                <div style={{ fontSize: '10px', fontStyle: 'italic', opacity: 0.8, lineHeight: '1.4' }}>
+                                                    "{result.strategic_reasoning}"
+                                                </div>
+                                            )}
+                                            {result.market_insights && (
+                                                <div style={{ fontSize: '10px', opacity: 0.9, lineHeight: '1.5', background: 'rgba(251, 191, 36, 0.05)', padding: '8px', borderRadius: '6px' }}>
+                                                    <span style={{ fontWeight: 900, color: '#fbbf24', fontSize: '8px', display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>Market Insight:</span>
+                                                    {result.market_insights}
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 
@@ -928,28 +1131,15 @@ export default function ResumeBuilder({ token, initialData }) {
                                             </div>
                                         )}
                                     </div>
-                                </div>
+                                    </div>
+                                </BlurCard>
                             ) : (
                                 <p style={{ fontSize: '10px', fontWeight: 600, opacity: 0.55, margin: 0 }}>AI insights will appear after optimization.</p>
                             )}
                         </div>
                     </div>
 
-                    {rxUrl && (
-                        <div className="rb-success-card">
-                            <p style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', color: '#10b981', marginBottom: '16px', letterSpacing: '0.1em' }}>Masterpiece Built!</p>
-                            <a
-                                href={rxUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="rb-action-primary"
-                                style={{ background: '#10b981', color: 'white', textDecoration: 'none', display: 'inline-flex' }}
-                            >
-                                VIEW ON RXRESU.ME
-                                <ExternalLink size={16} />
-                            </a>
-                        </div>
-                    )}
+
                 </div>
             </div>
         </div>

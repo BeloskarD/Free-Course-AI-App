@@ -62,6 +62,10 @@ Sentry.init({
 
 // ── CORE MIDDLEWARE ──
 app.use(requestIdMiddleware);
+app.use((req, res, next) => {
+  console.log(`📡 [Incoming Request] ${req.method} ${req.path}`);
+  next();
+});
 app.use(compression());
 app.use('/api/billing/webhook', express.raw({ limit: '2mb', type: 'application/json' }));
 app.use(express.json({ limit: '10mb' }));
@@ -142,6 +146,7 @@ const aiLimiter = rateLimit({
   message: { error: 'TooManyRequests', message: 'AI processing limit reached. Please try again in 15 minutes.' },
   standardHeaders: 'draft-7',
   legacyHeaders: false,
+  skip: (req) => req.path.includes('/job-status')
 });
 app.use('/api/ai', aiLimiter);
 app.use('/api/ai-resume', aiLimiter);

@@ -1,6 +1,5 @@
 import express from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { getFeatureLimit } from '../config/billing.js';
 import careerController from '../controllers/career.controller.js';
 import growthController from '../controllers/growth.controller.js';
 import { subscriptionGuard } from '../middleware/subscriptionGuard.js';
@@ -12,29 +11,25 @@ router.get('/ping', (req, res) => res.json({ status: 'ok', timestamp: new Date()
 
 router.use(authenticate);
 
-/**
- * @route GET /api/career/readiness
- * @desc Get dynamic hiring readiness score and breakdown
- */
-router.get('/readiness', careerController.getHiringReadiness);
+router.get('/readiness', subscriptionGuard('careerIntelligence'), careerController.getHiringReadiness);
 
 /**
  * @route GET /api/career/radar
  * @desc Get radar breakdown mapped to target role
  */
-router.get('/radar', careerController.getRadarBreakdown);
+router.get('/radar', subscriptionGuard('advancedInsights'), careerController.getRadarBreakdown);
 
 /**
  * @route GET /api/career/timeline
  * @desc Get data-driven career timeline projection
  */
-router.get('/timeline', careerController.getCareerTimeline);
+router.get('/timeline', subscriptionGuard('advancedInsights'), careerController.getCareerTimeline);
 
 /**
  * @route POST /api/career/validate
  * @desc Perform skill validation (MCQ, Code, Project)
  */
-router.post('/validate', subscriptionGuard('validation_limit', getFeatureLimit('free', 'validation_limit')), careerController.validateSkill);
+router.post('/validate', subscriptionGuard('skillValidation', { limitKey: 'validationLimit' }), careerController.validateSkill);
 router.get('/generate-probe', careerController.generateProbe);
 router.get('/generate-strategy', careerController.generateStrategy);
 

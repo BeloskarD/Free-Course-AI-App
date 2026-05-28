@@ -1,4 +1,5 @@
 import logger from '../utils/logger.js';
+import { shapeGatedResponse, getCuriosityHint } from '../utils/response.js';
 import hiringReadinessEngine from '../services/hiringReadinessEngine.js';
 import careerTimelineEngine from '../services/careerTimelineEngine.js';
 import validationProvider from '../services/validationProvider.js';
@@ -81,7 +82,19 @@ export const getHiringReadiness = async (req, res, next) => {
 
   try {
     const readiness = await hiringReadinessEngine.calculateScore(userId);
-    res.json({ success: true, data: readiness });
+    
+    // Response Shaping
+    if (req.entitlements && req.entitlements.tier === 'free') {
+        const shaped = shapeGatedResponse(readiness, req.entitlements, {
+            featureArea: 'careerIntelligence',
+            keysToLock: ['explanation', 'confidence', 'breakdown'],
+            upgradeHint: 'Upgrade to Career+ for deep recruiter reasoning.',
+            lockedMessage: getCuriosityHint('careerIntelligence')
+        });
+        return res.json(shaped);
+    }
+
+    res.json({ success: true, ...readiness });
   } catch (error) {
     // Selective Fallback: Handle Initialization State
     if (error.message?.includes('Initializing') || error.message?.includes('not found')) {
@@ -126,7 +139,7 @@ export const getCareerTimeline = async (req, res, next) => {
       }
     }
 
-    res.json({ success: true, data: timeline });
+    res.json({ success: true, ...timeline });
   } catch (error) {
     logger.error(`[Career Controller] Critical failure in getCareerTimeline for ${userId}:`, error.stack);
     next(error);
@@ -246,7 +259,19 @@ export const getRadarBreakdown = async (req, res, next) => {
 
   try {
     const radarData = await radarEngine.getRadarBreakdown(userId);
-    res.json({ success: true, data: radarData });
+
+    // Response Shaping
+    if (req.entitlements && req.entitlements.tier === 'free') {
+        const shaped = shapeGatedResponse(radarData, req.entitlements, {
+            featureArea: 'advancedInsights',
+            keysToLock: ['masteryBreakdown', 'marketDelta', 'hiringSignals'],
+            upgradeHint: 'Career+ users see precise market deltas and hiring signals.',
+            lockedMessage: getCuriosityHint('advancedInsights')
+        });
+        return res.json(shaped);
+    }
+
+    res.json({ success: true, ...radarData });
   } catch (error) {
     logger.error(`[Career Controller] Radar error for ${userId}:`, error.stack);
     next(error);

@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import ConfirmModal from "../../components/ui/ConfirmModal";
 import InterviewPrepModal from "../../components/ui/InterviewPrepModal";
+import { BlurCard } from "../../components/monetization/BlurCard";
+import { upgradeModalActions } from "../../hooks/useUpgradeModal";
 import { useState, useEffect, useCallback } from "react";
 
 // ── Session persistence for pagination ──
@@ -195,16 +197,51 @@ function OpportunityCard({ opportunity, onSave, onUnsave, onDismiss, onPrepare }
 
                     {expanded && gaps.length > 0 && (
                         <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                            {gaps.map((gap, i) => (
-                                <div key={i} className="flex items-center gap-2 sm:gap-3 px-3 py-2 rounded-xl bg-amber-500/5 border border-amber-500/10 transition-all hover:bg-amber-500/10">
-                                    <span className="text-[11px] font-black text-[var(--site-text)] flex-1 min-w-0 truncate tracking-tight">{formatSkillName(gap.skill)}</span>
-                                    <div className="flex items-center gap-2 flex-shrink-0">
-                                        <span className="text-[9px] font-bold text-[var(--site-text-muted)]">{Math.round((gap.currentMastery || 0) * 100)}%</span>
-                                        <ArrowUpRight size={10} className="text-amber-500" />
-                                        <span className="text-[9px] font-bold text-amber-500">{Math.round((gap.requiredLevel || 0) * 100)}%</span>
+                            {gaps.map((gap, i) => {
+                                const isLocked = gap.skill?.includes('Upgrade to Pro') || gap.skill?.includes('Upgrade to');
+                                if (isLocked) {
+                                    return (
+                                        <button 
+                                            key={i}
+                                            onClick={() => {
+                                                upgradeModalActions.open({
+                                                    featureName: 'Skill Gap Intelligence',
+                                                    targetTier: 'pro',
+                                                    upgradeHint: 'Upgrade to Pro to unlock detailed match reasoning and precise skill gap percentages.'
+                                                });
+                                            }}
+                                            className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500/10 to-indigo-500/10 border border-amber-500/25 hover:border-indigo-500/50 text-[var(--site-text)] transition-all hover:scale-[1.01] hover:shadow-md cursor-pointer group text-left"
+                                        >
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <Zap size={13} className="text-amber-500 fill-amber-500/20 group-hover:scale-110 transition-transform" />
+                                                <span className="truncate text-[11px] font-black text-[var(--site-text)] tracking-tight">
+                                                    Unlock precise gap analysis with Pro
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-1 font-black text-[9px] text-amber-500 bg-amber-500/10 px-2 py-1 rounded-lg whitespace-nowrap uppercase tracking-wider">
+                                                <span>Unlock</span>
+                                                <ArrowUpRight size={10} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                                            </div>
+                                        </button>
+                                    );
+                                }
+
+                                const parsedCurrent = parseFloat(gap.currentMastery);
+                                const parsedRequired = parseFloat(gap.requiredLevel);
+                                const currentMasteryPct = isNaN(parsedCurrent) ? 0 : Math.round(parsedCurrent * 100);
+                                const requiredLevelPct = isNaN(parsedRequired) ? 0 : Math.round(parsedRequired * 100);
+
+                                return (
+                                    <div key={i} className="flex items-center gap-2 sm:gap-3 px-3 py-2 rounded-xl bg-amber-500/5 border border-amber-500/10 transition-all hover:bg-amber-500/10">
+                                        <span className="text-[11px] font-black text-[var(--site-text)] flex-1 min-w-0 truncate tracking-tight">{formatSkillName(gap.skill)}</span>
+                                        <div className="flex items-center gap-2 flex-shrink-0">
+                                            <span className="text-[9px] font-bold text-[var(--site-text-muted)]">{currentMasteryPct}%</span>
+                                            <ArrowUpRight size={10} className="text-amber-500" />
+                                            <span className="text-[9px] font-bold text-amber-500">{requiredLevelPct}%</span>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
@@ -380,7 +417,7 @@ export default function OpportunityRadarPage() {
         setPrepConfig({ isOpen: true, kit: null, opportunity: opp, isLoading: true });
         try {
             const res = await api.getInterviewPrep(opp.signal.signalId, token);
-            setPrepConfig(prev => ({ ...prev, kit: res.data, isLoading: false }));
+            setPrepConfig(prev => ({ ...prev, kit: res, isLoading: false }));
         } catch (e) {
             console.error(e);
             setPrepConfig(prev => ({ ...prev, isLoading: false }));
@@ -534,6 +571,19 @@ export default function OpportunityRadarPage() {
                             />
                         </div>
                     ))}
+                    {radarRes?.locked && (
+                        <>
+                           {[1, 2, 3].map((i) => (
+                               <div key={`blur-${i}`} className="animate-in fade-in zoom-in duration-700 delay-200">
+                                   <BlurCard 
+                                       title="Deeper Matches" 
+                                       tier={radarRes?.tier === 'free' ? 'pro' : 'career_plus'} 
+                                       featureName="radar_matches"
+                                   />
+                               </div>
+                           ))}
+                        </>
+                    )}
                 </div>
 
                 <ConfirmModal

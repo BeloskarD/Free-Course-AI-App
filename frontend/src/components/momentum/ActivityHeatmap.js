@@ -44,7 +44,7 @@ export default function ActivityHeatmap({ data }) {
 
   return (
     <div className="relative group p-1 rounded-[4rem] bg-gradient-to-br from-[var(--card-border)] via-transparent to-[var(--card-border)] shadow-2xl">
-      <Surface className="p-10 md:p-14 rounded-[3.8rem] bg-[var(--card-bg)]/60 backdrop-blur-3xl border border-[var(--card-border)] overflow-hidden">
+      <Surface className="p-10 md:p-14 rounded-[3.8rem] bg-white/95 dark:bg-[var(--card-bg)]/60 backdrop-blur-3xl border border-neutral-200 dark:border-[var(--card-border)] overflow-hidden shadow-2xl">
         {/* Ambient Glow */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none" />
 
@@ -56,11 +56,11 @@ export default function ActivityHeatmap({ data }) {
                 <Calendar size={28} strokeWidth={2.5} />
               </div>
               <h2 className="text-4xl md:text-5xl font-black text-[var(--site-text)] tracking-tighter leading-tight">
-                Neural <span className="text-gradient-elite">Chronicle</span>
+                Learning <span className="text-gradient-elite">History</span>
               </h2>
             </div>
             <p className="text-sm font-bold text-[var(--site-text-muted)] opacity-60 tracking-wide max-w-xl">
-              High-fidelity logs of learning persistence and cognitive engagement over the last operational cycle.
+              Track your daily learning consistency and see your progress over the past year.
             </p>
           </div>
 
@@ -70,7 +70,7 @@ export default function ActivityHeatmap({ data }) {
                 {stats.total}
               </div>
               <div className="text-[8px] font-black text-neutral-500 uppercase tracking-widest">
-                Operations
+                Activities
               </div>
             </div>
             <div className="w-px h-8 bg-[var(--card-border)]" />
@@ -79,7 +79,7 @@ export default function ActivityHeatmap({ data }) {
                 {stats.bestDay}
               </div>
               <div className="text-[8px] font-black text-neutral-500 uppercase tracking-widest">
-                Peak Flux
+                Daily Best
               </div>
             </div>
           </div>
@@ -136,7 +136,7 @@ export default function ActivityHeatmap({ data }) {
         <div className="flex flex-col sm:flex-row items-center justify-between mt-10 pt-10 border-t border-[var(--card-border)] gap-6 relative z-10">
           <div className="flex items-center gap-4">
             <span className="text-[9px] font-black text-[var(--site-text-muted)] uppercase tracking-widest opacity-40">
-              Intensity Matrix
+              Activity Level
             </span>
             <div className="flex gap-1">
               {[0, 1, 2, 3, 4].map(i => (
@@ -152,7 +152,7 @@ export default function ActivityHeatmap({ data }) {
 
           <div className="flex items-center gap-3 px-5 py-2.5 bg-[var(--site-text)]/[0.03] border border-[var(--card-border)] rounded-full backdrop-blur-sm">
             <Info size={14} className="text-emerald-500" />
-            <span className="text-[9px] font-black text-[var(--site-text)] uppercase tracking-[0.2em]">Neural Node Analysis Active</span>
+            <span className="text-[9px] font-black text-[var(--site-text)] uppercase tracking-[0.2em]">Growth Tracking Active</span>
           </div>
         </div>
 
@@ -251,6 +251,8 @@ function generateHeatmapFromData(activityData) {
   return weeks;
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 function getMonthLabels(heatmapData) {
   const months = [];
   let currentMonth = null;
@@ -266,9 +268,7 @@ function getMonthLabels(heatmapData) {
     if (month !== currentMonth) {
       if (currentMonth !== null && weekCount > 0) {
         months.push({
-          label: new Date(2024, currentMonth).toLocaleString('default', {
-            month: 'short',
-          }),
+          label: MONTHS[currentMonth],
           width: weekCount,
         });
       }
@@ -282,9 +282,7 @@ function getMonthLabels(heatmapData) {
   // Add last month
   if (weekCount > 0 && currentMonth !== null) {
     months.push({
-      label: new Date(2024, currentMonth).toLocaleString('default', {
-        month: 'short',
-      }),
+      label: MONTHS[currentMonth],
       width: weekCount,
     });
   }
@@ -294,9 +292,5 @@ function getMonthLabels(heatmapData) {
 
 function formatDate(dateString) {
   const date = new Date(dateString);
-  return date.toLocaleDateString('default', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  return `${MONTHS[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
 }

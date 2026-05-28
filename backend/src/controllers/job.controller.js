@@ -30,6 +30,11 @@ export const getJobStatus = async (req, res) => {
                 // Fallback: normalize result itself if it's a flat structure
                 jobStatus.result = normalizeAIResponse(jobStatus.result, mode);
             }
+
+            // Explicitly elevate rx_api_response for easier polling access
+            if (jobStatus.result?.rx_api_response) {
+                jobStatus.rx_api_response = jobStatus.result.rx_api_response;
+            }
         }
 
         res.json({ success: true, data: jobStatus });

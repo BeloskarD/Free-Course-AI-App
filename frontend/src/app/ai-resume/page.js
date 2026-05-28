@@ -6,8 +6,8 @@ export default function AIResumeRedirect() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to the dashboard with the portfolio tab active
-    router.replace('/dashboard?tab=portfolio');
+    // Redirect to the dashboard with the resume tab active
+    router.replace('/dashboard?tab=resume');
   }, [router]);
 
   return (

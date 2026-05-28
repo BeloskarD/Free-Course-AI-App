@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from '../lib/runtimeConfig';
+import { injectUpsellMessage } from '../utils/aiUpsell';
 
 // Dynamic API base - prioritizes Environment configuration while retaining robust fallbacks
 const getApiBase = () => getApiBaseUrl();
@@ -46,11 +47,19 @@ export const api = {
     const responseData = await res.json().catch(() => ({}));
 
     if (res.status === 202 || (responseData.success && responseData.data?.jobId)) {
-      return await this.pollJobStatus(responseData.data.jobId, token, { accessKey: responseData.data.accessKey });
+      return await this.pollJobStatus(responseData.data.jobId, token, { 
+        accessKey: responseData.data.accessKey,
+        endpoint: `/ai/job-status`
+      });
     }
 
     if (!res.ok) {
       throw new Error(responseData.error || 'AI search failed');
+    }
+
+    // Automated Upsell Injection for free users
+    if (responseData.data) {
+       responseData.data = injectUpsellMessage(responseData.data, responseData.tier, 'general');
     }
 
     return responseData;
@@ -60,7 +69,8 @@ export const api = {
    * Universal Job Poller
    * Triggers when the backend pushes a heavy AI task to Agenda instead of blocking.
    */
-  async pollJobStatus(jobId, token, options = {}, maxRetries = 120) {
+  async pollJobStatus(jobId, token, options = {}, maxRetries = 300) {
+    const endpointPath = options.endpoint || '/ai/job-status';
     let retries = 0;
     return new Promise((resolve, reject) => {
       const poll = async () => {
@@ -75,7 +85,7 @@ export const api = {
             headers['X-Job-Access-Key'] = options.accessKey;
           }
 
-          const res = await fetch(`${API_BASE}/jobs/${jobId}`, {
+          const res = await fetch(`${API_BASE}${endpointPath}/${jobId}`, {
             headers,
           });
           
@@ -93,7 +103,7 @@ export const api = {
                 return;
             }
             console.warn(`[Poller] Job status check failed (${res.status}). Retry ${retries}/${maxRetries}...`);
-            setTimeout(poll, 4000);
+            setTimeout(poll, 2000);
             return;
           }
 
@@ -105,26 +115,29 @@ export const api = {
                  reject(new Error("Malformed job response."));
                  return;
              }
-             setTimeout(poll, 4000);
+             setTimeout(poll, 2000);
              return;
           }
 
-          const { status, result, error } = response.data;
+          const { status, result, error, rx_api_response } = response.data;
           
           if (status === 'completed') {
+            console.log("📥 [Poller] Job Completed. Result Keys:", Object.keys(result || {}));
             // Return the unflattened result directly to match direct API/Cache responses
             // This ensures components expecting `response.data` (like ResumeBuilder, Skill Gap) 
             // work correctly on the first load, instead of receiving a flattened object.
             resolve({ 
               success: true, 
-              ...result
+              ...result,
+              rx_api_response: rx_api_response || result?.rx_api_response
             });
+            return;
           } else if (status === 'failed') {
 
             reject(new Error(error || "AI Background Worker Failed"));
           } else {
-            // Processing or Queued => Check again in 4 seconds
-            setTimeout(poll, 4000);
+            // Processing or Queued => Check again in 2 seconds
+            setTimeout(poll, 2000);
           }
         } catch (err) {
           reject(err);
@@ -232,11 +245,11 @@ export const api = {
     return this.safeJson(res, `${API_BASE}/billing/subscription`);
   },
 
-  async createCheckoutSession(token, source = 'pricing_page') {
+  async createCheckoutSession(token, tier = 'pro', source = 'pricing_page') {
     const res = await fetch(`${API_BASE}/billing/checkout-session`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ source }),
+      body: JSON.stringify({ tier, source }),
     });
     return this.safeJson(res, `${API_BASE}/billing/checkout-session`);
   },
@@ -329,6 +342,13 @@ export const api = {
     return res.json();
   },
 
+  async getInterviewKit(signalId, token) {
+    const res = await fetch(`${API_BASE}/interview-prep/kit/${signalId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return res.json();
+  },
+
   // --- Skill Analysis ---
   async analyzeSkillGap(role, token) {
     const res = await fetch(`${API_BASE}/skill-analysis/analyze-gap`, {
@@ -341,7 +361,10 @@ export const api = {
     });
     const data = await res.json();
     if (res.status === 202 || (data.success && data.data?.jobId)) {
-      return await this.pollJobStatus(data.data.jobId, token, { accessKey: data.data.accessKey });
+      return await this.pollJobStatus(data.data.jobId, token, { 
+        accessKey: data.data.accessKey,
+        endpoint: `/skill-analysis/job-status`
+      });
     }
     return data;
   },
@@ -447,13 +470,14 @@ export const api = {
   },
 
   async logBreak(data, token) {
+    const payload = typeof data === 'number' ? { duration: data } : data;
     const res = await fetch(`${API_BASE}/personalization/wellbeing/break`, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}` 
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
     return res.json();
   },
@@ -547,7 +571,7 @@ export const api = {
   },
 
   // --- Career Engine ---
-  async getHiringReadiness(token) {
+  async getCareerReadiness(token) {
     const res = await fetch(`${API_BASE}/career/readiness`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -867,4 +891,93 @@ export const api = {
     });
     return res.json();
   },
+
+  async getLearningVelocity(token) {
+    const res = await fetch(`${API_BASE}/momentum/stats`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    return data.data; // contains { velocity, velocityTrend, ... }
+  },
+
+  async updateUserTier(tier, token) {
+    const res = await fetch(`${API_BASE}/user/profile/tier`, {
+      method: "PUT",
+      headers: { 
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}` 
+      },
+      body: JSON.stringify({ tier }),
+    });
+    return res.json();
+  },
+
+  // --- Portfolio & Career ---
+  async updatePortfolioSettings(portfolio, token) {
+    const res = await fetch(`${API_BASE}/portfolio/settings`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(portfolio)
+    });
+    return this.safeJson(res, `${API_BASE}/portfolio/settings`);
+  },
+
+  async generatePortfolioBio(token) {
+    const res = await fetch(`${API_BASE}/portfolio/generate-bio`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return this.safeJson(res, `${API_BASE}/portfolio/generate-bio`);
+  },
+
+  async analyzePortfolioATS(data, token) {
+    const res = await fetch(`${API_BASE}/portfolio/analyze-ats`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(data || {})
+    });
+    return this.safeJson(res, `${API_BASE}/portfolio/analyze-ats`);
+  },
+
+  async refinePortfolio(section, item, token) {
+    const res = await fetch(`${API_BASE}/portfolio/refine`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ section, item })
+    });
+    return this.safeJson(res, `${API_BASE}/portfolio/refine`);
+  },
+
+  async reviewPortfolio(token) {
+    const res = await fetch(`${API_BASE}/portfolio/review-all`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return this.safeJson(res, `${API_BASE}/portfolio/review-all`);
+  },
+
+  async syncGithubRepos(githubUsername, token) {
+    const res = await fetch(`${API_BASE}/portfolio/sync-github`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ githubUsername })
+    });
+    return this.safeJson(res, `${API_BASE}/portfolio/sync-github`);
+  }
 };

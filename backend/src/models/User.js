@@ -84,7 +84,7 @@ const userSchema = new mongoose.Schema(
     ],
 
     // Monetization & Growth
-    subscriptionTier: { type: String, enum: ['free', 'pro'], default: 'free' },
+    subscriptionTier: { type: String, enum: ['free', 'pro', 'career_plus'], default: 'free' },
     billing: {
       provider: { type: String, default: null },
       stripeCustomerId: { type: String, default: null },
@@ -94,6 +94,15 @@ const userSchema = new mongoose.Schema(
       currentPeriodEnd: { type: Date, default: null },
       cancelAtPeriodEnd: { type: Boolean, default: false },
       lastPaymentAt: { type: Date, default: null },
+    },
+
+    // Entitlements & Usage Tracking
+    usage: {
+      dailyChatCount: { type: Number, default: 0 },
+      dailySearchCount: { type: Number, default: 0 },
+      weeklyValidationCount: { type: Number, default: 0 },
+      monthlyResumeCount: { type: Number, default: 0 },
+      lastResetDate: { type: Date, default: Date.now }
     },
     onboardingStatus: {
       roleDefined: { type: Boolean, default: false },

@@ -7,7 +7,8 @@ import {
     Cpu, FileText, Search, AlertCircle, BookOpen
 } from 'lucide-react';
 import { api } from '../../services/api';
-import { getPublicAppUrl } from '../../lib/runtimeConfig';
+import { getPublicAppUrl, getApiBaseUrl } from '../../lib/runtimeConfig';
+import { useAuth } from '../../context/AuthContext';
 
 // Tab definitions
 const TABS = [
@@ -38,10 +39,17 @@ const FieldGroup = ({ icon: Icon, label, children, iconColor = '#6366f1' }) => (
 );
 
 export default function PortfolioManager({ token, initialData }) {
+    const { user: authUser } = useAuth();
     const [activeTab, setActiveTab] = useState('basic');
     const [saving, setSaving] = useState(false);
     const [status, setStatus] = useState({ type: '', message: '' });
     const [aiLoading, setAiLoading] = useState({});
+
+    // Platform state elements for the live verified ledger preview
+    const [platformMissions, setPlatformMissions] = useState([]);
+    const [platformSkills, setPlatformSkills] = useState([]);
+    const [userStats, setUserStats] = useState(null);
+    const [isRecruiterPreview, setIsRecruiterPreview] = useState(false);
 
     // Portfolio state
     const [portfolio, setPortfolio] = useState({
@@ -60,10 +68,39 @@ export default function PortfolioManager({ token, initialData }) {
         socialLinks: initialData?.portfolio?.socialLinks || {},
         featuredSkills: initialData?.portfolio?.featuredSkills || [],
         privacySettings: initialData?.portfolio?.privacySettings || {},
-        portfolioTheme: initialData?.portfolio?.portfolioTheme || 'professional'
+        portfolioTheme: initialData?.portfolio?.portfolioTheme || 'professional',
+        hologramEnabled: initialData?.portfolio?.hologramEnabled !== false,
+        shimmerEnabled: initialData?.portfolio?.shimmerEnabled !== false,
+        hiddenMissions: initialData?.portfolio?.hiddenMissions || [],
+        accentColor: initialData?.portfolio?.accentColor || '#6366f1'
     });
 
     const [atsScore, setAtsScore] = useState(initialData?.portfolio?.atsScore || null);
+
+    // Load active PKG skills and completed missions for verified showroom management
+    useEffect(() => {
+        if (!authUser) return;
+        const fetchPlatformData = async () => {
+            try {
+                const API_BASE = getApiBaseUrl();
+                const res = await fetch(`${API_BASE}/portfolio/${authUser.id || authUser._id}`);
+                const data = await res.json();
+                if (data.success) {
+                    setPlatformMissions(data.data.missions || []);
+                    setPlatformSkills(data.data.skills || []);
+                    setUserStats({
+                        level: data.data.user?.level || 1,
+                        xp: data.data.user?.xp || 0,
+                        wellnessStreak: data.data.profile?.wellnessStreak || 0,
+                        subscriptionTier: data.data.user?.subscriptionTier || 'free'
+                    });
+                }
+            } catch (err) {
+                console.error("Failed to load platform verified assets:", err);
+            }
+        };
+        fetchPlatformData();
+    }, [authUser]);
 
     // Update field helper
     const updateField = (section, value) => {
@@ -1193,8 +1230,20 @@ export default function PortfolioManager({ token, initialData }) {
                     .ats-main-score { font-size: 3.5rem; }
                     .ats-item { padding: 14px 10px; }
                     .ats-item-value { font-size: 1.4rem; }
+                    
+                    /* Custom ATS responsive controls */
+                    .pm-ats-card {
+                        flex-direction: column;
+                        padding: 24px;
+                        gap: 24px;
+                        text-align: center;
+                    }
+                    .pm-score-breakdown {
+                        width: 100%;
+                        gap: 12px;
+                    }
                 }
-
+ 
                 /* ========== RESPONSIVE - MOBILE (480px) ========== */
                 @media (max-width: 480px) {
                     .portfolio-manager { border-radius: 1rem; }
@@ -1245,6 +1294,20 @@ export default function PortfolioManager({ token, initialData }) {
                     .pm-card-header { flex-direction: column; gap: 12px; }
                     .pm-card-actions { width: 100%; justify-content: flex-end; }
                     .pm-add-btn { padding: 16px; font-size: 0.75rem; }
+                    
+                    /* ATS Mobile layout */
+                    .pm-ats-card {
+                        padding: 16px;
+                        gap: 16px;
+                    }
+                    .pm-score-value {
+                        font-size: 3.5rem;
+                    }
+                    .pm-score-breakdown {
+                        grid-template-columns: 1fr;
+                        gap: 8px;
+                    }
+                    
                     .ats-score-display { padding: 24px 18px; border-radius: 1rem; }
                     .ats-breakdown { grid-template-columns: repeat(3, 1fr); gap: 8px; }
                     .ats-main-score { font-size: 3rem; }
@@ -1337,72 +1400,250 @@ export default function PortfolioManager({ token, initialData }) {
                 ))}
             </div>
 
-            {/* Content */}
-            <div className="pm-content">
-                {/* BASIC INFO TAB */}
-                {activeTab === 'basic' && (
-                    <BasicInfoTab
-                        portfolio={portfolio}
-                        updateField={updateField}
-                        updateNestedField={updateNestedField}
-                        generateBio={generateBio}
-                        aiLoading={aiLoading}
-                    />
-                )}
+            {/* Two-Column Ledger Hub Layout */}
+            <div className="pm-two-column-layout" style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0, 1fr) 300px',
+                gap: 28,
+                marginTop: 24
+            }}>
+                {/* Left Column: Tab Content */}
+                <div className="pm-content" style={{ marginTop: 0 }}>
+                    {/* BASIC INFO TAB */}
+                    {activeTab === 'basic' && (
+                        <BasicInfoTab
+                            portfolio={portfolio}
+                            updateField={updateField}
+                            updateNestedField={updateNestedField}
+                            generateBio={generateBio}
+                            aiLoading={aiLoading}
+                        />
+                    )}
 
-                {/* EXPERIENCE TAB */}
-                {activeTab === 'experience' && (
-                    <ExperienceTab
-                        portfolio={portfolio}
-                        addToArray={addToArray}
-                        removeFromArray={removeFromArray}
-                        updateArrayItem={updateArrayItem}
-                        polishDescription={polishDescription}
-                        aiLoading={aiLoading}
-                    />
-                )}
+                    {/* EXPERIENCE TAB */}
+                    {activeTab === 'experience' && (
+                        <ExperienceTab
+                            portfolio={portfolio}
+                            addToArray={addToArray}
+                            removeFromArray={removeFromArray}
+                            updateArrayItem={updateArrayItem}
+                            polishDescription={polishDescription}
+                            aiLoading={aiLoading}
+                        />
+                    )}
 
-                {/* SKILLS TAB */}
-                {activeTab === 'skills' && (
-                    <SkillsTab
-                        portfolio={portfolio}
-                        updateField={updateField}
-                        addToArray={addToArray}
-                        removeFromArray={removeFromArray}
-                        updateArrayItem={updateArrayItem}
-                    />
-                )}
+                    {/* SKILLS TAB */}
+                    {activeTab === 'skills' && (
+                        <SkillsTab
+                            portfolio={portfolio}
+                            updateField={updateField}
+                            addToArray={addToArray}
+                            removeFromArray={removeFromArray}
+                            updateArrayItem={updateArrayItem}
+                        />
+                    )}
 
-                {/* SHOWCASE TAB */}
-                {activeTab === 'showcase' && (
-                    <ShowcaseTab
-                        portfolio={portfolio}
-                        addToArray={addToArray}
-                        removeFromArray={removeFromArray}
-                        updateArrayItem={updateArrayItem}
-                        polishDescription={polishDescription}
-                        aiLoading={aiLoading}
-                    />
-                )}
+                    {/* SHOWCASE TAB */}
+                    {activeTab === 'showcase' && (
+                        <ShowcaseTab
+                            portfolio={portfolio}
+                            addToArray={addToArray}
+                            removeFromArray={removeFromArray}
+                            updateArrayItem={updateArrayItem}
+                            polishDescription={polishDescription}
+                            aiLoading={aiLoading}
+                            platformMissions={platformMissions}
+                            updateField={updateField}
+                        />
+                    )}
 
-                {/* AI CENTER TAB */}
-                {activeTab === 'ai' && (
-                    <AICenterTab
-                        atsScore={atsScore}
-                        analyzeATS={analyzeATS}
-                        aiLoading={aiLoading}
-                        token={token}
-                    />
-                )}
+                    {/* AI CENTER TAB */}
+                    {activeTab === 'ai' && (
+                        <AICenterTab
+                            atsScore={atsScore}
+                            analyzeATS={analyzeATS}
+                            aiLoading={aiLoading}
+                            token={token}
+                        />
+                    )}
 
-                {/* SETTINGS TAB */}
-                {activeTab === 'settings' && (
-                    <SettingsTab
-                        portfolio={portfolio}
-                        updateField={updateField}
-                        updateNestedField={updateNestedField}
-                    />
-                )}
+                    {/* SETTINGS TAB */}
+                    {activeTab === 'settings' && (
+                        <SettingsTab
+                            portfolio={portfolio}
+                            updateField={updateField}
+                            updateNestedField={updateNestedField}
+                        />
+                    )}
+                </div>
+
+                {/* Right Column: Live Stats & PKG Sidebar Card */}
+                <div className="pm-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                    {/* User Stats Card */}
+                    <div style={{
+                        background: 'var(--card-bg)',
+                        border: '1.5px solid var(--card-border)',
+                        borderRadius: '2rem',
+                        padding: 24,
+                        boxShadow: 'var(--pm-shadow-elite)',
+                        position: 'relative',
+                        overflow: 'hidden'
+                    }}>
+                        <div style={{
+                            position: 'absolute',
+                            top: -20,
+                            right: -20,
+                            width: 120,
+                            height: 120,
+                            background: 'radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%)',
+                            pointerEvents: 'none'
+                        }} />
+
+                        {/* Tier Badge */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <span style={{ fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--site-text-muted)', opacity: 0.6 }}>
+                                Dossier Status
+                            </span>
+                            {userStats?.subscriptionTier === 'career_plus' ? (
+                                <span style={{
+                                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                                    color: 'white',
+                                    padding: '6px 12px',
+                                    borderRadius: '50px',
+                                    fontSize: '9px',
+                                    fontWeight: 900,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.1em',
+                                    boxShadow: '0 4px 12px rgba(245, 158, 11, 0.2)'
+                                }}>
+                                    👑 Career+ Active
+                                </span>
+                            ) : userStats?.subscriptionTier === 'pro' ? (
+                                <span style={{
+                                    background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+                                    color: 'white',
+                                    padding: '6px 12px',
+                                    borderRadius: '50px',
+                                    fontSize: '9px',
+                                    fontWeight: 900,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.1em',
+                                    boxShadow: '0 4px 12px rgba(139, 92, 246, 0.2)'
+                                }}>
+                                    ⭐ Pro Active
+                                </span>
+                            ) : (
+                                <a href="/pricing" style={{
+                                    background: 'var(--card-border)',
+                                    color: 'var(--site-text-muted)',
+                                    padding: '6px 12px',
+                                    borderRadius: '50px',
+                                    fontSize: '9px',
+                                    fontWeight: 900,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.1em',
+                                    border: '1px solid var(--card-border)',
+                                    textDecoration: 'none'
+                                }} className="hover:text-indigo-500">
+                                    Free Learner 🔒
+                                </a>
+                            )}
+                        </div>
+
+                        {/* Avatar & Levels */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+                            <div style={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: '1rem',
+                                background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                                padding: 1.5
+                            }}>
+                                <div style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    background: 'var(--card-bg)',
+                                    borderRadius: '0.95rem',
+                                    overflow: 'hidden',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    <img 
+                                        src={authUser?.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${authUser?.name}`} 
+                                        alt={authUser?.name} 
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <h4 style={{ fontSize: '0.9rem', fontWeight: 900, color: 'var(--site-text)', textTransform: 'uppercase', marginBottom: 2 }}>
+                                    {authUser?.name || 'Candidate'}
+                                </h4>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--site-text-muted)', fontWeight: 700 }}>
+                                    LVL {userStats?.level || 1} • {userStats?.xp || 0} XP
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Streak Badge */}
+                        <div style={{
+                            background: 'linear-gradient(135deg, rgba(244, 63, 94, 0.08) 0%, rgba(245, 158, 11, 0.08) 100%)',
+                            border: '1.5px solid rgba(244, 63, 94, 0.15)',
+                            padding: 12,
+                            borderRadius: '1rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between'
+                        }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#f43f5e', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                                🔥 Learning Streak
+                            </span>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 900, color: '#f59e0b' }}>
+                                {userStats?.wellnessStreak || 0} Days
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Verified PKG Matrix Preview */}
+                    <div style={{
+                        background: 'var(--card-bg)',
+                        border: '1.5px solid var(--card-border)',
+                        borderRadius: '2rem',
+                        padding: 24,
+                        boxShadow: 'var(--pm-shadow-elite)'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                            <Cpu size={16} style={{ color: '#6366f1' }} />
+                            <h4 style={{ fontSize: '0.8rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--site-text)' }}>
+                                PKG Skill Telemetry
+                            </h4>
+                        </div>
+
+                        {platformSkills.length > 0 ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                {platformSkills.slice(0, 4).map((skill, idx) => (
+                                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase' }}>
+                                            <span style={{ color: 'var(--site-text)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                {skill.name}
+                                                {skill.isVerified && <span style={{ color: '#10b981', fontSize: '8px' }}>✓</span>}
+                                            </span>
+                                            <span style={{ color: '#6366f1' }}>{skill.level}%</span>
+                                        </div>
+                                        <div style={{ height: 4, background: 'var(--card-border)', borderRadius: 50, overflow: 'hidden' }}>
+                                            <div style={{ height: '100%', background: 'linear-gradient(90deg, #6366f1 0%, #a855f7 100%)', width: `${skill.level}%`, borderRadius: 50 }} />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div style={{ fontSize: '0.72rem', color: 'var(--site-text-muted)', textAlign: 'center', padding: '8px 0' }}>
+                                Complete skill validations to populate PKG Telemetry.
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
 
             {/* Print Resume Button - Elite Positioning */}
@@ -1588,288 +1829,305 @@ function BasicInfoTab({ portfolio, updateField, updateNestedField, generateBio, 
 }
 
 // ========== EXPERIENCE TAB ==========
-function ExperienceTab({ portfolio, addToArray, removeFromArray, updateArrayItem, polishDescription, aiLoading }) {
-    const addExperience = () => {
-        addToArray('experience', {
-            role: '',
-            company: '',
-            location: '',
-            startDate: '',
-            endDate: '',
-            isCurrent: false,
-            description: '',
-            technologies: []
-        });
+function ExperienceTab({ portfolio }) {
+    const handleRedirectToResume = () => {
+        window.location.href = '/dashboard?tab=resume';
     };
 
-    const addEducation = () => {
-        addToArray('education', {
-            degree: '',
-            fieldOfStudy: '',
-            institution: '',
-            startYear: '',
-            endYear: ''
-        });
-    };
-
-    const addCertificate = () => {
-        addToArray('certificates', {
-            title: '',
-            issuer: '',
-            issueDate: '',
-            link: ''
-        });
-    };
+    const experienceCount = portfolio.experience?.length || 0;
+    const educationCount = portfolio.education?.length || 0;
+    const certificateCount = portfolio.certificates?.length || 0;
 
     return (
-        <>
-            {/* Work Experience */}
-            <div className="pm-section accent-indigo">
-                <div className="pm-section-title">
-                    <Briefcase size={20} /> Work Experience
-                    <span className="pm-count-badge">
-                        {portfolio.experience.length} Positions
-                    </span>
-                </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+            {/* Ledger Sync Status Header */}
+            <div className="pm-section" style={{
+                background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)',
+                color: 'white',
+                border: '1.5px solid rgba(99, 102, 241, 0.2)',
+                position: 'relative',
+                overflow: 'hidden',
+                borderRadius: '2rem',
+                padding: '36px',
+                boxShadow: 'var(--pm-shadow-elite)'
+            }}>
+                <div style={{
+                    position: 'absolute',
+                    top: -20,
+                    right: -20,
+                    width: 250,
+                    height: 250,
+                    background: 'radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, transparent 70%)',
+                    zIndex: 0,
+                    pointerEvents: 'none'
+                }} />
 
-                {portfolio.experience.map((exp, idx) => (
-                    <div key={idx} className="pm-card elite-border-left">
-                        <div className="pm-card-header">
-                            <div style={{ flex: 1 }}>
-                                <input
-                                    type="text"
-                                    className="pm-input headline"
-                                    placeholder="Job Title (e.g., Senior Software Engineer)"
-                                    value={exp.role}
-                                    onChange={e => updateArrayItem('experience', idx, { role: e.target.value })}
-                                />
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                        <div style={{
+                            background: 'rgba(255,255,255,0.1)',
+                            borderRadius: '1rem',
+                            padding: 8,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}>
+                            <Cpu size={24} style={{ color: '#818cf8' }} />
+                        </div>
+                        <span style={{
+                            fontSize: '0.65rem',
+                            fontWeight: 900,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.15em',
+                            color: '#a5b4fc',
+                            background: 'rgba(99, 102, 241, 0.2)',
+                            padding: '4px 10px',
+                            borderRadius: '20px',
+                            border: '1px solid rgba(165, 180, 252, 0.15)'
+                        }}>
+                            Telemetry Verified Ledger
+                        </span>
+                    </div>
+
+                    <h3 style={{ fontSize: '1.6rem', fontWeight: 900, color: 'white', letterSpacing: '-0.02em', marginBottom: 8, fontFamily: 'var(--font-outfit)', textTransform: 'uppercase' }}>
+                        Core History & Experience Ledger
+                    </h3>
+                    <p style={{ fontSize: '0.85rem', color: '#c7d2fe', lineHeight: 1.6, maxWidth: '650px', marginBottom: 24 }}>
+                        To prevent duplicate data entry and preserve a single source of truth for recruiters, your professional positions, degrees, and licenses are automatically synced from your <strong>AI Resume Builder</strong>.
+                    </p>
+
+                    {/* Stats Dashboard Grid */}
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                        gap: 16,
+                        marginBottom: 28
+                    }}>
+                        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1.25rem', padding: '16px 20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#818cf8', marginBottom: 8 }}>
+                                <Briefcase size={14} />
+                                <span style={{ fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Work History</span>
                             </div>
-                            <div className="pm-card-actions">
-                                <button
-                                    className="pm-icon-btn ai"
-                                    onClick={() => polishDescription('experience', idx)}
-                                    disabled={aiLoading[`experience-${idx}`]}
-                                    title="AI Polish Description"
-                                >
-                                    <Sparkles size={16} />
-                                </button>
-                                <button
-                                    className="pm-icon-btn danger"
-                                    onClick={() => removeFromArray('experience', idx)}
-                                    title="Remove Position"
-                                >
-                                    <Trash2 size={16} />
-                                </button>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 950, color: 'white' }}>{experienceCount} Positions</div>
+                            <span style={{ fontSize: '0.65rem', color: '#a5b4fc', fontWeight: 600 }}>Active Synced Records</span>
+                        </div>
+
+                        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1.25rem', padding: '16px 20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#34d399', marginBottom: 8 }}>
+                                <GraduationCap size={14} />
+                                <span style={{ fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Education</span>
                             </div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 950, color: 'white' }}>{educationCount} Degrees</div>
+                            <span style={{ fontSize: '0.65rem', color: '#a7f3d0', fontWeight: 600 }}>Academic Milestones</span>
                         </div>
 
-                        <div className="pm-grid">
-                            <FieldGroup icon={Briefcase} label="Organization" iconColor="#6366f1">
-                                <input
-                                    type="text"
-                                    className="pm-input"
-                                    placeholder="Company Name"
-                                    value={exp.company}
-                                    onChange={e => updateArrayItem('experience', idx, { company: e.target.value })}
-                                />
-                            </FieldGroup>
-                            <FieldGroup icon={Globe} label="Location" iconColor="#6366f1">
-                                <input
-                                    type="text"
-                                    className="pm-input"
-                                    placeholder="City, Country"
-                                    value={exp.location || ''}
-                                    onChange={e => updateArrayItem('experience', idx, { location: e.target.value })}
-                                />
-                            </FieldGroup>
-                        </div>
-
-                        <div className="pm-row-spaced" style={{ marginTop: 24 }}>
-                            <FieldGroup icon={Calendar} label="Timeline" iconColor="#6366f1">
-                                <div className="pm-timeline-controls">
-                                    <input
-                                        type="text"
-                                        className="pm-input"
-                                        placeholder="Start (e.g., Jan 2020)"
-                                        value={exp.startDate || ''}
-                                        onChange={e => updateArrayItem('experience', idx, { startDate: e.target.value })}
-                                    />
-                                    <span className="pm-connector">—</span>
-                                    <input
-                                        type="text"
-                                        className="pm-input"
-                                        placeholder="End (or Present)"
-                                        value={exp.endDate || ''}
-                                        onChange={e => updateArrayItem('experience', idx, { endDate: e.target.value })}
-                                        disabled={exp.isCurrent}
-                                    />
-                                </div>
-                            </FieldGroup>
-                        </div>
-
-                        <div style={{ marginTop: 24 }}>
-                            <FieldGroup icon={ChevronRight} label="Impact & Responsibilities" iconColor="#8b5cf6">
-                                <textarea
-                                    className="pm-textarea"
-                                    placeholder="Describe your achievements using action verbs..."
-                                    value={exp.description}
-                                    onChange={e => updateArrayItem('experience', idx, { description: e.target.value })}
-                                />
-                            </FieldGroup>
+                        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1.25rem', padding: '16px 20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#fbbf24', marginBottom: 8 }}>
+                                <Award size={14} />
+                                <span style={{ fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Certifications</span>
+                            </div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 950, color: 'white' }}>{certificateCount} Verified</div>
+                            <span style={{ fontSize: '0.65rem', color: '#fde68a', fontWeight: 600 }}>Professional Badges</span>
                         </div>
                     </div>
-                ))}
 
-                <button className="pm-add-btn" onClick={addExperience}>
-                    <Plus size={18} /> Add Professional Position
-                </button>
+                    <button
+                        onClick={handleRedirectToResume}
+                        style={{
+                            background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                            color: 'white',
+                            border: 'none',
+                            padding: '16px 32px',
+                            borderRadius: '1.25rem',
+                            fontWeight: 900,
+                            fontSize: '0.75rem',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.1em',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            transition: 'all 0.3s ease',
+                            boxShadow: '0 10px 25px rgba(99, 102, 241, 0.3)'
+                        }}
+                        className="hover:scale-105 active:scale-95"
+                    >
+                        <Sparkles size={14} /> Edit Milestones in AI Resume Builder
+                    </button>
+                </div>
             </div>
 
-            {/* Education */}
-            <div className="pm-section accent-emerald">
-                <div className="pm-section-title">
-                    <GraduationCap size={20} /> Academic Foundation
-                    <span className="pm-count-badge">
-                        {portfolio.education.length} Degrees
-                    </span>
-                </div>
-
-                {portfolio.education.map((edu, idx) => (
-                    <div key={idx} className="pm-card" style={{ borderLeft: '5px solid #10b981' }}>
-                        <div className="pm-card-header">
-                            <div style={{ flex: 1 }}>
-                                <input
-                                    type="text"
-                                    className="pm-input headline"
-                                    placeholder="Degree (e.g., Bachelor of Science)"
-                                    value={edu.degree}
-                                    onChange={e => updateArrayItem('education', idx, { degree: e.target.value })}
-                                    style={{ color: '#10b981' }}
-                                />
-                            </div>
-                            <div className="pm-card-actions">
-                                <button
-                                    className="pm-icon-btn danger"
-                                    onClick={() => removeFromArray('education', idx)}
-                                >
-                                    <Trash2 size={16} />
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="pm-grid">
-                            <FieldGroup icon={BookOpen} label="Field of Study" iconColor="#10b981">
-                                <input
-                                    type="text"
-                                    className="pm-input"
-                                    placeholder="Major/Concentration"
-                                    value={edu.fieldOfStudy}
-                                    onChange={e => updateArrayItem('education', idx, { fieldOfStudy: e.target.value })}
-                                />
-                            </FieldGroup>
-                            <FieldGroup icon={Search} label="Institution" iconColor="#10b981">
-                                <input
-                                    type="text"
-                                    className="pm-input"
-                                    placeholder="University/School Name"
-                                    value={edu.institution}
-                                    onChange={e => updateArrayItem('education', idx, { institution: e.target.value })}
-                                />
-                            </FieldGroup>
-                        </div>
-
-                        <div className="pm-row-spaced" style={{ marginTop: 24 }}>
-                            <FieldGroup icon={Calendar} label="Academic Timeline" iconColor="#10b981">
-                                <div className="pm-timeline-controls">
-                                    <input
-                                        type="text"
-                                        className="pm-input"
-                                        placeholder="Start Year"
-                                        value={edu.startYear}
-                                        onChange={e => updateArrayItem('education', idx, { startYear: e.target.value })}
-                                    />
-                                    <span className="pm-connector">—</span>
-                                    <input
-                                        type="text"
-                                        className="pm-input"
-                                        placeholder="End Year (or Expected)"
-                                        value={edu.endYear}
-                                        onChange={e => updateArrayItem('education', idx, { endYear: e.target.value })}
-                                    />
-                                </div>
-                            </FieldGroup>
-                        </div>
+            {/* Read-only Synced Previews */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+                
+                {/* Synced Experience Section */}
+                <div className="pm-section accent-indigo" style={{ background: 'var(--card-bg)' }}>
+                    <div className="pm-section-title">
+                        <Briefcase size={20} /> Synced Professional Milestones
                     </div>
-                ))}
 
-                <button className="pm-add-btn" onClick={addEducation}>
-                    <Plus size={18} /> Add Academic Credential
-                </button>
-            </div>
-
-            {/* Certifications */}
-            <div className="pm-section accent-amber">
-                <div className="pm-section-title">
-                    <Award size={20} /> Professional Certifications
-                    <span className="pm-count-badge">
-                        {portfolio.certificates.length} verified
-                    </span>
-                </div>
-
-                <div className="pm-grid">
-                    {portfolio.certificates.map((cert, idx) => (
-                        <div key={idx} className="pm-card" style={{ borderTop: '4px solid #f59e0b', marginBottom: 0 }}>
-                            <div className="pm-card-header" style={{ marginBottom: 16 }}>
-                                <div style={{ flex: 1, fontWeight: 800, fontSize: '0.9rem', color: '#b45309' }}>
-                                    {cert.title || 'Untitled Certification'}
-                                </div>
-                                <button
-                                    className="pm-icon-btn danger"
-                                    onClick={() => removeFromArray('certificates', idx)}
-                                    style={{ width: 32, height: 32 }}
-                                >
-                                    <Trash2 size={14} />
-                                </button>
-                            </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                                <FieldGroup icon={Award} label="Certification Title" iconColor="#f59e0b">
-                                    <input
-                                        type="text"
-                                        className="pm-input"
-                                        placeholder="Name of Certification"
-                                        value={cert.title}
-                                        onChange={e => updateArrayItem('certificates', idx, { title: e.target.value })}
-                                    />
-                                </FieldGroup>
-                                <FieldGroup icon={Globe} label="Issuing Authority" iconColor="#f59e0b">
-                                    <input
-                                        type="text"
-                                        className="pm-input"
-                                        placeholder="Issuer (e.g., AWS, Google)"
-                                        value={cert.issuer}
-                                        onChange={e => updateArrayItem('certificates', idx, { issuer: e.target.value })}
-                                    />
-                                </FieldGroup>
-                                <FieldGroup icon={ExternalLink} label="Verification URL" iconColor="#f59e0b">
-                                    <input
-                                        type="url"
-                                        className="pm-input"
-                                        placeholder="https://verify.cert/id"
-                                        value={cert.link}
-                                        onChange={e => updateArrayItem('certificates', idx, { link: e.target.value })}
-                                    />
-                                </FieldGroup>
-                            </div>
+                    {experienceCount === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '30px 20px', color: 'var(--site-text-muted)', fontSize: '0.85rem' }}>
+                            No work experience added yet. Manage your records under the <a href="#" onClick={handleRedirectToResume} style={{ color: '#6366f1', fontWeight: 700 }}>AI Resume Builder</a>.
                         </div>
-                    ))}
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                            {portfolio.experience.map((exp, idx) => (
+                                <div key={idx} style={{
+                                    background: 'var(--site-bg)',
+                                    border: '1px solid var(--card-border)',
+                                    borderLeft: '5px solid #6366f1',
+                                    borderRadius: '1.25rem',
+                                    padding: '24px'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
+                                        <div>
+                                            <h4 style={{ fontSize: '1.05rem', fontWeight: 900, color: 'var(--site-text)', textTransform: 'uppercase', marginBottom: 2 }}>{exp.role}</h4>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.75rem', fontWeight: 700, color: 'var(--site-text-muted)' }}>
+                                                <span>{exp.company}</span>
+                                                {exp.location && (
+                                                    <>
+                                                        <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--card-border)' }} />
+                                                        <span>{exp.location}</span>
+                                                    </>
+                                                )}
+                                                <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--card-border)' }} />
+                                                <span style={{ color: '#6366f1' }}>{exp.duration || `${exp.startDate} - ${exp.endDate || 'Present'}`}</span>
+                                            </div>
+                                        </div>
+                                        <span style={{
+                                            fontSize: '8px',
+                                            fontWeight: 900,
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.08em',
+                                            color: '#6366f1',
+                                            background: 'rgba(99, 102, 241, 0.08)',
+                                            padding: '4px 10px',
+                                            borderRadius: '8px',
+                                            border: '1px solid rgba(99, 102, 241, 0.15)'
+                                        }}>
+                                            ⚡ SYNCED LEDGER RECORD
+                                        </span>
+                                    </div>
+                                    <p style={{ fontSize: '0.82rem', color: 'var(--site-text-muted)', lineHeight: 1.6, margin: 0, opacity: 0.9 }}>
+                                        {exp.description}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
-                <button className="pm-add-btn" onClick={addCertificate} style={{ marginTop: 24 }}>
-                    <Plus size={18} /> Add Professional Certificate
-                </button>
+                {/* Synced Education Section */}
+                <div className="pm-section accent-emerald" style={{ background: 'var(--card-bg)' }}>
+                    <div className="pm-section-title">
+                        <GraduationCap size={20} style={{ color: '#10b981' }} /> Synced Academic Foundation
+                    </div>
+
+                    {educationCount === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '30px 20px', color: 'var(--site-text-muted)', fontSize: '0.85rem' }}>
+                            No education records added yet. Manage your records under the <a href="#" onClick={handleRedirectToResume} style={{ color: '#10b981', fontWeight: 700 }}>AI Resume Builder</a>.
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                            {portfolio.education.map((edu, idx) => (
+                                <div key={idx} style={{
+                                    background: 'var(--site-bg)',
+                                    border: '1px solid var(--card-border)',
+                                    borderLeft: '5px solid #10b981',
+                                    borderRadius: '1.25rem',
+                                    padding: '24px'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+                                        <div>
+                                            <h4 style={{ fontSize: '1.05rem', fontWeight: 900, color: 'var(--site-text)', textTransform: 'uppercase', marginBottom: 2 }}>{edu.degree}</h4>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.75rem', fontWeight: 700, color: 'var(--site-text-muted)' }}>
+                                                <span>{edu.fieldOfStudy}</span>
+                                                <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--card-border)' }} />
+                                                <span>{edu.institution}</span>
+                                                <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--card-border)' }} />
+                                                <span style={{ color: '#10b981' }}>{edu.year || `${edu.startYear} - ${edu.endYear}`}</span>
+                                            </div>
+                                        </div>
+                                        <span style={{
+                                            fontSize: '8px',
+                                            fontWeight: 900,
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.08em',
+                                            color: '#10b981',
+                                            background: 'rgba(16, 185, 129, 0.08)',
+                                            padding: '4px 10px',
+                                            borderRadius: '8px',
+                                            border: '1px solid rgba(16, 185, 129, 0.15)'
+                                        }}>
+                                            ⚡ SYNCED LEDGER RECORD
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Synced Certifications Section */}
+                <div className="pm-section accent-amber" style={{ background: 'var(--card-bg)' }}>
+                    <div className="pm-section-title">
+                        <Award size={20} style={{ color: '#f59e0b' }} /> Synced Licenses & Certifications
+                    </div>
+
+                    {certificateCount === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '30px 20px', color: 'var(--site-text-muted)', fontSize: '0.85rem' }}>
+                            No certifications added yet. Manage your records under the <a href="#" onClick={handleRedirectToResume} style={{ color: '#f59e0b', fontWeight: 700 }}>AI Resume Builder</a>.
+                        </div>
+                    ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+                            {portfolio.certificates.map((cert, idx) => (
+                                <div key={idx} style={{
+                                    background: 'var(--site-bg)',
+                                    border: '1px solid var(--card-border)',
+                                    borderTop: '4px solid #f59e0b',
+                                    borderRadius: '1.25rem',
+                                    padding: '24px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: 'space-between',
+                                    gap: 16
+                                }}>
+                                    <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                            <span style={{
+                                                fontSize: '8px',
+                                                fontWeight: 900,
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.08em',
+                                                color: '#f59e0b',
+                                                background: 'rgba(245, 158, 11, 0.08)',
+                                                padding: '4px 10px',
+                                                borderRadius: '8px',
+                                                border: '1px solid rgba(245, 158, 11, 0.15)'
+                                            }}>
+                                                VERIFIED
+                                            </span>
+                                            {cert.link && (
+                                                <a href={cert.link} target="_blank" rel="noopener noreferrer" style={{ color: '#f59e0b', textDecoration: 'none' }} className="hover:scale-110 transition-transform">
+                                                    <ExternalLink size={14} />
+                                                </a>
+                                            )}
+                                        </div>
+                                        <h4 style={{ fontSize: '0.95rem', fontWeight: 900, color: 'var(--site-text)', textTransform: 'uppercase', marginBottom: 4 }}>{cert.title}</h4>
+                                        <p style={{ fontSize: '0.72rem', color: 'var(--site-text-muted)', fontWeight: 700, textTransform: 'uppercase', margin: 0 }}>{cert.issuer}</p>
+                                    </div>
+                                    <div style={{ fontSize: '0.7rem', color: 'var(--site-text-muted)', opacity: 0.8 }}>
+                                        Issued: {cert.issueDate || 'N/A'}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
             </div>
-        </>
+        </div>
     );
 }
 
@@ -1978,7 +2236,7 @@ function SkillsTab({ portfolio, updateField, addToArray, removeFromArray, update
 }
 
 // ========== SHOWCASE TAB ==========
-function ShowcaseTab({ portfolio, addToArray, removeFromArray, updateArrayItem, polishDescription, aiLoading }) {
+function ShowcaseTab({ portfolio, addToArray, removeFromArray, updateArrayItem, polishDescription, aiLoading, platformMissions = [], updateField }) {
     const addProject = () => {
         addToArray('customProjects', {
             title: '',
@@ -1995,6 +2253,105 @@ function ShowcaseTab({ portfolio, addToArray, removeFromArray, updateArrayItem, 
 
     return (
         <div className="pm-tab-container">
+            {/* PLATFORM-VERIFIED SANDBOX LABS SHOWROOM PINNING */}
+            <div className="pm-section accent-emerald" style={{ marginBottom: 32 }}>
+                <div className="pm-section-title" style={{ display: 'flex', justifyContent: 'between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Award size={20} style={{ color: '#10b981' }} />
+                        Platform-Verified Sandbox Labs (Showroom Pinning)
+                    </div>
+                    <span className="pm-count-badge" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981', marginLeft: 'auto' }}>
+                        {platformMissions.length - (portfolio.hiddenMissions || []).filter(id => platformMissions.some(m => m.id === id)).length} / {platformMissions.length} Featured
+                    </span>
+                </div>
+
+                <p style={{ fontSize: '0.85rem', color: 'var(--site-text-muted)', marginBottom: 20, lineHeight: '1.5' }}>
+                    Every Sandbox coding lab and platform architecture you complete is telemetry-verified. Toggle switches below to choose which achievements are featured in your verified public showroom.
+                </p>
+
+                {platformMissions.length > 0 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 16 }}>
+                        {platformMissions.map(m => {
+                            const isFeatured = !(portfolio.hiddenMissions || []).includes(m.id);
+                            return (
+                                <div key={m.id} style={{
+                                    background: 'var(--card-bg)',
+                                    border: `1.5px solid ${isFeatured ? 'rgba(16, 185, 129, 0.4)' : 'var(--card-border)'}`,
+                                    borderRadius: '1.25rem',
+                                    padding: 16,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 12,
+                                    boxShadow: isFeatured ? '0 8px 20px -5px rgba(16, 185, 129, 0.05)' : 'none',
+                                    transition: 'all 0.3s ease'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 12 }}>
+                                        <div style={{ flex: 1 }}>
+                                            <h4 style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--site-text)', textTransform: 'uppercase', marginBottom: 4, lineHeight: '1.3' }}>
+                                                {m.title}
+                                            </h4>
+                                            <span style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                                {m.skill} • {m.difficulty}
+                                            </span>
+                                        </div>
+                                        
+                                        {/* Toggle Switch */}
+                                        <button
+                                            onClick={() => {
+                                                const currentHidden = portfolio.hiddenMissions || [];
+                                                let newHidden;
+                                                if (currentHidden.includes(m.id)) {
+                                                    newHidden = currentHidden.filter(id => id !== m.id);
+                                                } else {
+                                                    newHidden = [...currentHidden, m.id];
+                                                }
+                                                updateField('hiddenMissions', newHidden);
+                                            }}
+                                            style={{
+                                                width: 38,
+                                                height: 20,
+                                                background: isFeatured ? '#10b981' : 'var(--card-border)',
+                                                borderRadius: 50,
+                                                position: 'relative',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.3s ease',
+                                                flexShrink: 0
+                                            }}
+                                            title={isFeatured ? "Hide from public showroom" : "Pin to public showroom"}
+                                        >
+                                            <div style={{
+                                                width: 14,
+                                                height: 14,
+                                                background: 'white',
+                                                borderRadius: '50%',
+                                                position: 'absolute',
+                                                top: 3,
+                                                left: isFeatured ? 21 : 3,
+                                                transition: 'all 0.3s ease'
+                                            }} />
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div style={{
+                        padding: '32px 20px',
+                        borderRadius: '1.25rem',
+                        border: '2.5px dashed var(--card-border)',
+                        textAlign: 'center',
+                        color: 'var(--site-text-muted)'
+                    }}>
+                        <Award size={36} style={{ color: 'var(--site-text-muted)', opacity: 0.4, marginBottom: 12, display: 'block', marginLeft: 'auto', marginRight: 'auto' }} />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--site-text)', display: 'block', marginBottom: 4 }}>No Completed Labs Yet</span>
+                        <p style={{ fontSize: '0.75rem', maxWidth: '400px', margin: '0 auto', opacity: 0.7, lineHeight: '1.5' }}>
+                            Complete real-world coding challenges and sandbox projects inside your learning path to automatically showcase validated proof-of-work on your showroom!
+                        </p>
+                    </div>
+                )}
+            </div>
             {/* Featured Projects */}
             <div className="pm-section accent-indigo">
                 <div className="pm-section-title">
@@ -2234,13 +2591,50 @@ function AICenterTab({ atsScore, analyzeATS, aiLoading, token }) {
 
 // ========== SETTINGS TAB ==========
 function SettingsTab({ portfolio, updateField, updateNestedField }) {
+    const { user } = useAuth();
     const [copied, setCopied] = useState(false);
-    const publicUrl = `${getPublicAppUrl()}/portfolio/${portfolio.id || 'your-id'}`;
+    const subscriptionTier = user?.subscriptionTier || 'free';
+    const isPremium = subscriptionTier === 'pro' || subscriptionTier === 'career_plus';
+    const publicUrl = `${getPublicAppUrl()}/portfolio/${portfolio.id || user?.id || user?._id || 'your-id'}`;
 
     const handleCopy = () => {
-        navigator.clipboard.writeText(publicUrl);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(publicUrl)
+                .then(() => {
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                })
+                .catch((err) => {
+                    console.error("Clipboard copy failed, using fallback:", err);
+                    fallbackCopy();
+                });
+        } else {
+            fallbackCopy();
+        }
+    };
+
+    const fallbackCopy = () => {
+        try {
+            const textArea = document.createElement("textarea");
+            textArea.value = publicUrl;
+            textArea.style.position = "fixed";
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.opacity = "0";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            if (successful) {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            } else {
+                console.error("Fallback copy execution was unsuccessful");
+            }
+        } catch (err) {
+            console.error("Fallback copy failure:", err);
+        }
     };
 
     return (
@@ -2317,6 +2711,7 @@ function SettingsTab({ portfolio, updateField, updateNestedField }) {
                 </div>
             </div>
 
+            {/* Visibility Controls */}
             <div className="pm-section" style={{ background: 'var(--card-bg)' }}>
                 <div className="pm-section-title">
                     <Settings size={18} /> Visibility Controls
@@ -2327,7 +2722,8 @@ function SettingsTab({ portfolio, updateField, updateNestedField }) {
                         { key: 'isPublic', label: 'Public Access', desc: 'Allows everyone to see your profile' },
                         { key: 'showEmail', label: 'Show Email', desc: 'Display contact email address' },
                         { key: 'showPhone', label: 'Show Phone', desc: 'Display phone contact info' },
-                        { key: 'showLocation', label: 'Show Location', desc: 'Display city/country info' }
+                        { key: 'showLocation', label: 'Show Location', desc: 'Display city/country info' },
+                        { key: 'disableFallbacks', label: 'Disable Fallback Data', desc: 'Hide simulated/placeholder profiles when your profile is empty' }
                     ].map(({ key, label, desc }) => (
                         <div key={key} className="pm-skill-entry"
                             style={{ gridTemplateColumns: '1fr auto', padding: '18px 24px', cursor: 'pointer' }}
@@ -2362,39 +2758,176 @@ function SettingsTab({ portfolio, updateField, updateNestedField }) {
             </div>
 
             {/* Theme & Aesthetics */}
-            <div className="pm-section accent-amber">
+            <div className="pm-section accent-amber" style={{ background: 'var(--card-bg)' }}>
                 <div className="pm-section-title">
                     <Award size={18} style={{ color: '#f59e0b' }} />
                     Visual Identity & Theme
                 </div>
 
-                <FieldGroup icon={Globe} label="Select Portfolio Style" iconColor="#f59e0b">
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
-                        {['professional', 'creative', 'minimalist', 'tech', 'executive'].map(theme => (
-                            <button
-                                key={theme}
-                                onClick={() => updateField('portfolioTheme', theme)}
-                                style={{
-                                    padding: '14px',
-                                    borderRadius: 12,
-                                    border: '2px solid',
-                                    borderColor: portfolio.portfolioTheme === theme ? '#f59e0b' : 'var(--card-border)',
-                                    background: portfolio.portfolioTheme === theme ? 'rgba(245, 158, 11, 0.05)' : 'var(--site-bg)',
-                                    color: portfolio.portfolioTheme === theme ? '#f59e0b' : 'var(--site-text-muted)',
-                                    fontWeight: 800,
-                                    fontSize: '0.75rem',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.05em',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.3s ease'
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                    <FieldGroup icon={Globe} label="Select Portfolio Style" iconColor="#f59e0b">
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
+                            {['professional', 'creative', 'minimalist', 'tech', 'executive', 'glassmorphism'].map(theme => {
+                                const isThemeLocked = theme === 'glassmorphism' && !isPremium;
+                                return (
+                                    <button
+                                        key={theme}
+                                        onClick={() => {
+                                            if (isThemeLocked) {
+                                                alert("⚠️ Glassmorphic style is gated for Pro & Career+ subscribers. Upgrade to unlock elite themes!");
+                                                return;
+                                            }
+                                            updateField('portfolioTheme', theme);
+                                        }}
+                                        style={{
+                                            padding: '14px',
+                                            borderRadius: 12,
+                                            border: '2px solid',
+                                            borderColor: portfolio.portfolioTheme === theme ? '#f59e0b' : 'var(--card-border)',
+                                            background: portfolio.portfolioTheme === theme ? 'rgba(245, 158, 11, 0.05)' : 'var(--site-bg)',
+                                            color: portfolio.portfolioTheme === theme ? '#f59e0b' : 'var(--site-text-muted)',
+                                            fontWeight: 800,
+                                            fontSize: '0.72rem',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.05em',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.3s ease',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: 6
+                                        }}
+                                    >
+                                        {isThemeLocked ? '🔒 ' : (portfolio.portfolioTheme === theme && <Sparkles size={10} style={{ color: '#f59e0b' }} />)}
+                                        {theme}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </FieldGroup>
+
+                    {/* Accent Color Selection */}
+                    <FieldGroup icon={Globe} label="Accent Theme Color Palette" iconColor="#10b981">
+                        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', paddingTop: 6 }}>
+                            {[
+                                { color: '#6366f1', name: 'indigo' },
+                                { color: '#10b981', name: 'emerald' },
+                                { color: '#8b5cf6', name: 'violet' },
+                                { color: '#f59e0b', name: 'amber' },
+                                { color: '#f43f5e', name: 'rose' },
+                                { color: '#0ea5e9', name: 'sky' }
+                            ].map(({ color, name }) => (
+                                <button
+                                    key={name}
+                                    onClick={() => updateField('accentColor', color)}
+                                    style={{
+                                        width: 34,
+                                        height: 34,
+                                        borderRadius: '50%',
+                                        backgroundColor: color,
+                                        border: portfolio.accentColor === color ? '3px solid white' : '2.5px solid transparent',
+                                        outline: portfolio.accentColor === color ? '2.5px solid #6366f1' : 'none',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease',
+                                        boxShadow: '0 4px 10px rgba(0,0,0,0.15)'
+                                    }}
+                                    title={name}
+                                />
+                            ))}
+                        </div>
+                    </FieldGroup>
+
+                    {/* Visual Highlights (Shimmers & Holograms) */}
+                    <div style={{ borderTop: '1px solid var(--card-border)', paddingTop: 20 }}>
+                        <div style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--site-text)', marginBottom: 12 }}>
+                            Verified Ledger Aesthetics (Premium Tier Features)
+                        </div>
+                        
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                            {/* Holographic Badges */}
+                            <div className="pm-skill-entry"
+                                style={{ gridTemplateColumns: '1fr auto', padding: '14px 20px', cursor: 'pointer', opacity: isPremium ? 1 : 0.6 }}
+                                onClick={() => {
+                                    if (!isPremium) {
+                                        alert("⚠️ Holographic Badges are gated for Pro & Career+ subscribers. Upgrade to unlock real-time validated aesthetics!");
+                                        return;
+                                    }
+                                    updateField('hologramEnabled', !portfolio.hologramEnabled);
                                 }}
                             >
-                                {portfolio.portfolioTheme === theme && <Sparkles size={10} style={{ marginRight: 6 }} />}
-                                {theme}
-                            </button>
-                        ))}
+                                <div>
+                                    <div style={{ fontWeight: 800, fontSize: '0.8rem', color: 'var(--site-text)', marginBottom: 2 }}>
+                                        {!isPremium && '🔒 '}Holographic Badges
+                                    </div>
+                                    <div style={{ fontSize: '0.7rem', color: 'var(--site-text-muted)', opacity: 0.7 }}>
+                                        Show special Telemetry-Verified shimmers next to skills.
+                                    </div>
+                                </div>
+                                <div style={{
+                                    width: 38,
+                                    height: 20,
+                                    background: isPremium && portfolio.hologramEnabled ? '#10b981' : 'var(--card-border)',
+                                    borderRadius: 50,
+                                    position: 'relative',
+                                    transition: 'all 0.3s ease',
+                                    flexShrink: 0
+                                }}>
+                                    <div style={{
+                                        width: 14,
+                                        height: 14,
+                                        background: 'white',
+                                        borderRadius: '50%',
+                                        position: 'absolute',
+                                        top: 3,
+                                        left: isPremium && portfolio.hologramEnabled ? 21 : 3,
+                                        transition: 'all 0.3s ease'
+                                    }} />
+                                </div>
+                            </div>
+
+                            {/* Shimmer Skill Bars */}
+                            <div className="pm-skill-entry"
+                                style={{ gridTemplateColumns: '1fr auto', padding: '14px 20px', cursor: 'pointer', opacity: isPremium ? 1 : 0.6 }}
+                                onClick={() => {
+                                    if (!isPremium) {
+                                        alert("⚠️ Skill Bar Shimmers are gated for Pro & Career+ subscribers. Upgrade to unlock telemetry shimmers!");
+                                        return;
+                                    }
+                                    updateField('shimmerEnabled', !portfolio.shimmerEnabled);
+                                }}
+                            >
+                                <div>
+                                    <div style={{ fontWeight: 800, fontSize: '0.8rem', color: 'var(--site-text)', marginBottom: 2 }}>
+                                        {!isPremium && '🔒 '}Skill Bar Shimmer
+                                    </div>
+                                    <div style={{ fontSize: '0.7rem', color: 'var(--site-text-muted)', opacity: 0.7 }}>
+                                        Apply high-fidelity moving gradient glow to active technical bars.
+                                    </div>
+                                </div>
+                                <div style={{
+                                    width: 38,
+                                    height: 20,
+                                    background: isPremium && portfolio.shimmerEnabled ? '#10b981' : 'var(--card-border)',
+                                    borderRadius: 50,
+                                    position: 'relative',
+                                    transition: 'all 0.3s ease',
+                                    flexShrink: 0
+                                }}>
+                                    <div style={{
+                                        width: 14,
+                                        height: 14,
+                                        background: 'white',
+                                        borderRadius: '50%',
+                                        position: 'absolute',
+                                        top: 3,
+                                        left: isPremium && portfolio.shimmerEnabled ? 21 : 3,
+                                        transition: 'all 0.3s ease'
+                                    }} />
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </FieldGroup>
+                </div>
             </div>
         </div>
     );

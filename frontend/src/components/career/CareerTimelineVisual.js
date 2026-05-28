@@ -16,6 +16,8 @@ import Surface from "../ui/Surface";
 import { api } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useQuery } from "@tanstack/react-query";
+import { LockedOverlay } from "../monetization/LockedOverlay";
+import { JobReadinessCard } from "./JobReadinessCard";
 
 const CareerTimelineVisual = () => {
   const { token } = useAuth();
@@ -78,6 +80,14 @@ const CareerTimelineVisual = () => {
 
   return (
     <div className="space-y-12 animate-in fade-in duration-1000">
+      <div className="px-4">
+        <JobReadinessCard 
+          readinessScore={data.hiringProbability || 50} 
+          targetRole={data.targetRole}
+          tier={timeline?.tier || 'free'}
+        />
+      </div>
+
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 px-4">
         <div className="flex items-center gap-6">
           <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20 shadow-xl">
@@ -106,33 +116,58 @@ const CareerTimelineVisual = () => {
       </div>
 
       {/* Trajectory Scenarios */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 px-4">
-        {['optimistic', 'realistic', 'pessimistic'].map((type) => (
-          <div key={type} className={`p-10 rounded-[3rem] border transition-all duration-500 relative overflow-hidden group ${
-            type === 'realistic' 
-              ? 'bg-gradient-to-br from-indigo-500/10 to-transparent border-indigo-500/30 scale-105 shadow-[0_30px_70px_-20px_rgba(79,70,229,0.2)]' 
-              : 'bg-[var(--card-bg)] border-[var(--card-border)] opacity-60 hover:opacity-100'
-          }`}>
-            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl -mr-16 -mt-16" />
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] mb-6 text-[var(--site-text-muted)]">{type} Velocity</p>
-            <div className="flex items-end gap-2 mb-6">
-               <h4 className="text-5xl font-black text-[var(--site-text)] tracking-tighter leading-none">{data.scenarios?.[type] || '...'}</h4>
-               <span className="text-xs font-black text-[var(--site-text-muted)] uppercase tracking-widest mb-1.5">Months</span>
+      {data.locked && !data.scenarios?.optimistic ? (
+        <div className="px-4">
+          <LockedOverlay 
+            featureName="Career Forecasting" 
+            tier="career_plus"
+            title="Predictive Trajectories Locked"
+            message={data.upgradeHint || "Upgrade to Career+ to unlock scenario forecasting."}
+            progress={data.hiringProbability || 50}
+            stepsLeft={data.milestones?.length > 0 ? data.milestones.length + 2 : 3}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {['optimistic', 'realistic', 'pessimistic'].map((type) => (
+                <div key={type} className="p-10 rounded-[3rem] border bg-[var(--card-bg)] border-[var(--card-border)] opacity-60 relative overflow-hidden">
+                   <p className="text-[10px] font-black uppercase tracking-[0.4em] mb-6 text-[var(--site-text-muted)]">{type} Velocity</p>
+                   <div className="flex items-end gap-2 mb-6">
+                      <h4 className="text-5xl font-black text-[var(--site-text)] tracking-tighter leading-none">?</h4>
+                   </div>
+                   <div className="w-full h-2 bg-[var(--site-text)]/5 rounded-full" />
+                </div>
+              ))}
             </div>
-            <div className="w-full h-2 bg-[var(--site-text)]/5 rounded-full overflow-hidden p-0.5">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: type === 'optimistic' ? '30%' : type === 'realistic' ? '60%' : '100%' }}
-                className={`h-full rounded-full shadow-lg ${
-                  type === 'optimistic' ? 'bg-gradient-to-r from-emerald-400 to-emerald-600' : 
-                  type === 'realistic' ? 'bg-gradient-to-r from-indigo-500 to-blue-600' : 
-                  'bg-gradient-to-r from-amber-400 to-orange-600'
-                }`}
-              />
+          </LockedOverlay>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 px-4">
+          {['optimistic', 'realistic', 'pessimistic'].map((type) => (
+            <div key={type} className={`p-10 rounded-[3rem] border transition-all duration-500 relative overflow-hidden group ${
+              type === 'realistic' 
+                ? 'bg-gradient-to-br from-indigo-500/10 to-transparent border-indigo-500/30 scale-105 shadow-[0_30px_70px_-20px_rgba(79,70,229,0.2)]' 
+                : 'bg-[var(--card-bg)] border-[var(--card-border)] opacity-60 hover:opacity-100'
+            }`}>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl -mr-16 -mt-16" />
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] mb-6 text-[var(--site-text-muted)]">{type} Velocity</p>
+              <div className="flex items-end gap-2 mb-6">
+                 <h4 className="text-5xl font-black text-[var(--site-text)] tracking-tighter leading-none">{data.scenarios?.[type] || '...'}</h4>
+                 <span className="text-xs font-black text-[var(--site-text-muted)] uppercase tracking-widest mb-1.5">Months</span>
+              </div>
+              <div className="w-full h-2 bg-[var(--site-text)]/5 rounded-full overflow-hidden p-0.5">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: type === 'optimistic' ? '30%' : type === 'realistic' ? '60%' : '100%' }}
+                  className={`h-full rounded-full shadow-lg ${
+                    type === 'optimistic' ? 'bg-gradient-to-r from-emerald-400 to-emerald-600' : 
+                    type === 'realistic' ? 'bg-gradient-to-r from-indigo-500 to-blue-600' : 
+                    'bg-gradient-to-r from-amber-400 to-orange-600'
+                  }`}
+                />
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
         {/* Milestone Vertical Path */}

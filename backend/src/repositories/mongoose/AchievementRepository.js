@@ -1,35 +1,38 @@
 import Achievement from '../../models/Achievement.js';
 import IAchievementRepository from '../AchievementRepository.js';
+import AchievementMapper from '../../mappers/AchievementMapper.js';
 
 /**
  * MONGO ACHIEVEMENT REPOSITORY
  * ============================
+ * Mongoose implementation of the Achievement Repository.
+ * Cleanly maps active db records into frozen database-agnostic POJOs.
  */
 class MongoAchievementRepository extends IAchievementRepository {
     async findAll() {
         const achievements = await Achievement.find();
-        return this.toPOJO(achievements);
+        return AchievementMapper.toDomain(achievements);
     }
 
     async findById(id) {
         const achievement = await Achievement.findById(id);
-        return this.toPOJO(achievement);
+        return AchievementMapper.toDomain(achievement);
     }
 
     async find(query) {
         const achievements = await Achievement.find(query);
-        return this.toPOJO(achievements);
+        return AchievementMapper.toDomain(achievements);
     }
 
     async create(data) {
         const achievement = new Achievement(data);
         await achievement.save();
-        return this.toPOJO(achievement);
+        return AchievementMapper.toDomain(achievement);
     }
 
     async update(id, data) {
         const achievement = await Achievement.findByIdAndUpdate(id, data, { new: true });
-        return this.toPOJO(achievement);
+        return AchievementMapper.toDomain(achievement);
     }
 }
 

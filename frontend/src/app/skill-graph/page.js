@@ -9,6 +9,7 @@ import {
     Zap, Eye, TrendingUp, AlertTriangle, Link2, ChevronDown, Briefcase
 } from "lucide-react";
 import { useState, useMemo, useRef, useEffect } from "react";
+import { upgradeModalActions } from "../../hooks/useUpgradeModal";
 
 // ── Cluster Colors ──
 const CLUSTER_COLORS = {
@@ -29,13 +30,29 @@ function getClusterStyle(cluster) {
 
 // ── Skill Detail Card ──
 function SkillDetailCard({ node, onSelect }) {
-    const masteryPct = Math.round((node.masteryScore || 0) * 100);
-    const entropyPct = Math.round((node.entropyRate || 0) * 100);
+    const isMasteryLocked = node.masteryScore === "[LOCKED]";
+    const isEntropyLocked = node.entropyRate === "[LOCKED]";
+
+    const masteryPct = isMasteryLocked ? 0 : Math.round((node.masteryScore || 0) * 100);
+    const entropyPct = isEntropyLocked ? 0 : Math.round((node.entropyRate || 0) * 100);
     const healthPct = Math.round(node.health || 100);
     const style = getClusterStyle(node.cluster);
 
-    const entropyLabel = node.entropyRate > 0.7 ? 'Fading' : node.entropyRate > 0.4 ? 'Stable' : 'Strong';
-    const entropyColor = node.entropyRate > 0.7 ? 'text-red-500 bg-red-500/10' : node.entropyRate > 0.4 ? 'text-amber-500 bg-amber-500/10' : 'text-emerald-500 bg-emerald-500/10';
+    const entropyLabel = isEntropyLocked
+        ? '🔒 Pro Locked'
+        : node.entropyRate > 0.7
+            ? 'Fading'
+            : node.entropyRate > 0.4
+                ? 'Stable'
+                : 'Strong';
+
+    const entropyColor = isEntropyLocked
+        ? 'text-indigo-400 bg-indigo-500/10 border border-indigo-500/20'
+        : node.entropyRate > 0.7
+            ? 'text-red-500 bg-red-500/10'
+            : node.entropyRate > 0.4
+                ? 'text-amber-500 bg-amber-500/10'
+                : 'text-emerald-500 bg-emerald-500/10';
 
     return (
         <div 
@@ -54,7 +71,20 @@ function SkillDetailCard({ node, onSelect }) {
                         <p className={`text-[8px] sm:text-[9px] font-bold uppercase tracking-wider ${style.text} truncate`}>{node.cluster}</p>
                     </div>
                 </div>
-                <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg ${entropyColor} shrink-0`}>{entropyLabel}</span>
+                <span 
+                    onClick={(e) => {
+                        if (isEntropyLocked) {
+                            e.stopPropagation();
+                            upgradeModalActions.open({
+                                featureName: 'Skill Graph Engine',
+                                upgradeHint: 'Unlock full mastery scores, decay rates, and predictive skill paths.'
+                            });
+                        }
+                    }}
+                    className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg ${entropyColor} shrink-0 transition-colors ${isEntropyLocked ? 'hover:bg-indigo-500/20 cursor-pointer' : ''}`}
+                >
+                    {entropyLabel}
+                </span>
             </div>
 
             {/* Bars */}
@@ -63,10 +93,29 @@ function SkillDetailCard({ node, onSelect }) {
                 <div>
                     <div className="flex items-center justify-between mb-1">
                         <span className="text-[9px] font-bold text-[var(--site-text-muted)] uppercase tracking-wider">Mastery</span>
-                        <span className="text-[10px] font-black text-[var(--site-text)]">{masteryPct}%</span>
+                        {isMasteryLocked ? (
+                            <span 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    upgradeModalActions.open({
+                                        featureName: 'Skill Graph Engine',
+                                        upgradeHint: 'Unlock full mastery scores, decay rates, and predictive skill paths.'
+                                    });
+                                }}
+                                className="text-[9px] font-black text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1 cursor-pointer"
+                            >
+                                🔒 Gated (Pro)
+                            </span>
+                        ) : (
+                            <span className="text-[10px] font-black text-[var(--site-text)]">{masteryPct}%</span>
+                        )}
                     </div>
-                    <div className="h-1.5 bg-[var(--card-border)] rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full bg-gradient-to-r ${style.bg} transition-all duration-700`} style={{ width: `${masteryPct}%` }} />
+                    <div className="h-1.5 bg-[var(--card-border)] rounded-full overflow-hidden relative">
+                        {isMasteryLocked ? (
+                            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 animate-pulse border border-dashed border-indigo-500/30 rounded-full" />
+                        ) : (
+                            <div className={`h-full rounded-full bg-gradient-to-r ${style.bg} transition-all duration-700`} style={{ width: `${masteryPct}%` }} />
+                        )}
                     </div>
                 </div>
                 {/* Health */}
@@ -101,9 +150,14 @@ function SkillDetailCard({ node, onSelect }) {
 function SkillFocusPanel({ node, onClose }) {
     if (!node) return null;
     const style = getClusterStyle(node.cluster);
+    const isMasteryLocked = node.masteryScore === "[LOCKED]";
+    const isEntropyLocked = node.entropyRate === "[LOCKED]";
+
     return (
-        <Surface className="p-5 sm:p-6 md:p-8 relative">
+        <Surface className="p-5 sm:p-6 md:p-8 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-transparent pointer-events-none" />
             <button onClick={onClose} className="absolute top-4 right-4 sm:top-6 sm:right-6 text-[var(--site-text-muted)] hover:text-[var(--site-text)] transition-colors cursor-pointer btn-tactile">✕</button>
+            
             <div className="flex items-center gap-3 mb-5">
                 <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${style.bg} flex items-center justify-center`}>
                     <Brain size={24} className="text-white" />
@@ -116,27 +170,68 @@ function SkillFocusPanel({ node, onClose }) {
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
                 {[
-                    { l: 'Mastery', v: Math.round((node.masteryScore || 0) * 100) + '%' },
-                    { l: 'Entropy', v: Math.round((node.entropyRate || 0) * 100) + '%' },
+                    { l: 'Mastery', v: isMasteryLocked ? '🔒 Pro' : Math.round((node.masteryScore || 0) * 100) + '%' },
+                    { l: 'Entropy', v: isEntropyLocked ? '🔒 Pro' : Math.round((node.entropyRate || 0) * 100) + '%' },
                     { l: 'Health', v: Math.round(node.health || 100) + '%' },
                     { l: 'Velocity', v: (node.learningVelocity || 0).toFixed(2) },
-                ].map((s, i) => (
-                    <div key={i} className="px-3 py-3 rounded-xl bg-[var(--card-bg)] border border-[var(--card-border)] text-center">
-                        <p className="text-lg sm:text-xl font-black text-[var(--site-text)]">{s.v}</p>
-                        <p className="text-[8px] font-bold text-[var(--site-text-muted)] uppercase tracking-wider">{s.l}</p>
-                    </div>
-                ))}
+                ].map((s, i) => {
+                    const isLockedField = (s.l === 'Mastery' && isMasteryLocked) || (s.l === 'Entropy' && isEntropyLocked);
+                    return (
+                        <div 
+                            key={i} 
+                            onClick={() => {
+                                if (isLockedField) {
+                                    upgradeModalActions.open({
+                                        featureName: 'Skill Graph Engine',
+                                        upgradeHint: 'Unlock full mastery scores, decay rates, and predictive skill paths.'
+                                    });
+                                }
+                            }}
+                            className={`px-3 py-3 rounded-xl bg-[var(--card-bg)] border border-[var(--card-border)] text-center transition-all ${
+                                isLockedField 
+                                    ? 'cursor-pointer hover:border-indigo-500/50 hover:bg-indigo-500/5 hover:-translate-y-0.5' 
+                                    : ''
+                            }`}
+                        >
+                            <p className={`text-lg sm:text-xl font-black ${isLockedField ? 'text-indigo-400' : 'text-[var(--site-text)]'}`}>{s.v}</p>
+                            <p className="text-[8px] font-bold text-[var(--site-text-muted)] uppercase tracking-wider">{s.l}</p>
+                        </div>
+                    );
+                })}
             </div>
 
             {/* Adjacent skills */}
             {(node.adjacencySkills || []).length > 0 && (
-                <div>
+                <div className="mb-6">
                     <p className="text-xs font-black text-[var(--site-text-muted)] uppercase tracking-wider mb-3">Connected Skills</p>
                     <div className="flex flex-wrap gap-2">
                         {node.adjacencySkills.map((adj, i) => (
                             <span key={i} className="text-[10px] font-bold px-3 py-1.5 rounded-xl bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] capitalize">{adj}</span>
                         ))}
                     </div>
+                </div>
+            )}
+
+            {/* Gated curiosity CTA */}
+            {(isMasteryLocked || isEntropyLocked) && (
+                <div className="mt-6 p-4 rounded-3xl bg-gradient-to-r from-indigo-600/10 via-purple-600/10 to-blue-600/10 border border-indigo-500/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="text-left">
+                        <p className="text-xs font-black text-[var(--site-text)] flex items-center gap-1.5">
+                            <Sparkles size={14} className="text-indigo-400 animate-pulse" /> Unlock Advanced Cognitive Graph Insights
+                        </p>
+                        <p className="text-[10px] font-bold text-[var(--site-text-muted)] mt-1">
+                            Upgrade to Pro to track precise mastery scores, daily entropy decay rates, and predictive cognitive maps.
+                        </p>
+                    </div>
+                    <button 
+                        onClick={() => upgradeModalActions.open({
+                            featureName: 'Skill Graph Engine',
+                            upgradeHint: 'Unlock full mastery scores, decay rates, and predictive skill paths.'
+                        })}
+                        className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white text-[10px] font-black uppercase tracking-wider rounded-xl btn-tactile flex items-center gap-1.5 shrink-0 shadow-lg shadow-indigo-600/15"
+                    >
+                        <Zap size={11} fill="white" /> Upgrade to Pro
+                    </button>
                 </div>
             )}
         </Surface>
@@ -216,7 +311,7 @@ export default function SkillGraphPage() {
         refetchOnMount: "always",
     });
 
-    const graph = graphRes?.data;
+    const graph = graphRes?.data || (graphRes?.nodes ? graphRes : null);
     const nodes = graph?.nodes || [];
     const clusters = graph?.clusters || [];
 
@@ -226,8 +321,11 @@ export default function SkillGraphPage() {
             result = result.filter(n => n.cluster === filterCluster);
         }
         result.sort((a, b) => {
-            if (sortBy === 'mastery') return (b.masteryScore || 0) - (a.masteryScore || 0);
-            if (sortBy === 'entropy') return (b.entropyRate || 0) - (a.entropyRate || 0);
+            const getMastery = (s) => s.masteryScore === "[LOCKED]" ? 0 : (s.masteryScore || 0);
+            const getEntropy = (s) => s.entropyRate === "[LOCKED]" ? 0 : (s.entropyRate || 0);
+
+            if (sortBy === 'mastery') return getMastery(b) - getMastery(a);
+            if (sortBy === 'entropy') return getEntropy(b) - getEntropy(a);
             if (sortBy === 'health') return (a.health || 100) - (b.health || 100);
             return (b.learningVelocity || 0) - (a.learningVelocity || 0);
         });

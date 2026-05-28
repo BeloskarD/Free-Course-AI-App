@@ -15,6 +15,8 @@ import {
     Star
 } from 'lucide-react';
 import { humanizeSkillName } from '../../utils/stringUtils';
+import BlurCard from '../monetization/BlurCard';
+import { upgradeModalActions } from '../../hooks/useUpgradeModal';
 
 // Health status configurations
 const HEALTH_STATUS = {
@@ -67,7 +69,9 @@ const BADGE_CONFIG = {
 export default function SkillHealthCard({
     skill,
     onTakeChallenge,
-    isCompact = false
+    isCompact = false,
+    tier = 'free',
+    isGated = false
 }) {
     const [isHovered, setIsHovered] = useState(false);
 
@@ -98,7 +102,19 @@ export default function SkillHealthCard({
                 min-h-[220px] w-full flex flex-col justify-between shadow-[var(--shadow-elite)]`}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            onClick={() => onTakeChallenge?.(skill)}
+            onClick={(e) => {
+                if (isGated) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    upgradeModalActions.open({
+                        featureName: 'Skill Mastery Insights',
+                        targetTier: 'pro',
+                        upgradeHint: 'Reveal your hidden skill trajectories and unlock advanced micro-challenges.'
+                    });
+                } else {
+                    onTakeChallenge?.(skill);
+                }
+            }}
         >
             {/* Elite Hover Gradient Background */}
             <div className={`absolute inset-0 bg-gradient-to-br ${statusConfig.color} opacity-0 group-hover:opacity-[0.05] transition-opacity duration-1000`} />
@@ -156,33 +172,56 @@ export default function SkillHealthCard({
             {/* FOOTER: Sustainability & Action */}
             {!isCompact && (
                 <div className="relative z-10 space-y-5 border-t border-[var(--site-text)]/[0.04] pt-6 mt-2">
-                    {/* Baseline Stats */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex flex-col">
-                            <span className="text-[9px] font-black text-[var(--site-text-muted)] uppercase tracking-[0.2em] mb-1 opacity-50">
-                                Sustainability Baseline
-                            </span>
-                            <span className="text-sm font-bold text-[var(--site-text)] flex items-center gap-2">
-                                {daysSince === 0 ? 'Practiced today' : `${daysSince} days ago`}
-                                {daysSince > 10 && <AlertTriangle size={14} className="text-red-500 animate-bounce" />}
-                            </span>
-                        </div>
-                        
-                        {/* Status Label (Repositioned for better balance) */}
-                        <div className={`px-3 py-1 rounded-xl shadow-inner ${statusConfig.bgLight} ${statusConfig.bgDark}`}>
-                            <span className={`text-[10px] font-black uppercase tracking-widest ${statusConfig.text}`}>
-                                {statusConfig.label}
-                            </span>
-                        </div>
-                    </div>
+                    {isGated ? (
+                        <BlurCard
+                            title="Mastery Score"
+                            tier="pro"
+                            featureName="skill_sustainability"
+                            isLocked={true}
+                            className="border-none bg-transparent p-0 shadow-none"
+                        >
+                             <div className="flex items-center justify-between">
+                                <div className="flex flex-col">
+                                    <span className="text-[9px] font-black text-[var(--site-text-muted)] uppercase tracking-[0.2em] mb-1 opacity-50">
+                                        Sustainability Baseline
+                                    </span>
+                                    <span className="text-sm font-bold text-[var(--site-text)] flex items-center gap-2">
+                                        {daysSince === 0 ? 'Practiced today' : `${daysSince} days ago`}
+                                    </span>
+                                </div>
+                            </div>
+                        </BlurCard>
+                    ) : (
+                        <>
+                            {/* Baseline Stats */}
+                            <div className="flex items-center justify-between">
+                                <div className="flex flex-col">
+                                    <span className="text-[9px] font-black text-[var(--site-text-muted)] uppercase tracking-[0.2em] mb-1 opacity-50">
+                                        Sustainability Baseline
+                                    </span>
+                                    <span className="text-sm font-bold text-[var(--site-text)] flex items-center gap-2">
+                                        {daysSince === 0 ? 'Practiced today' : `${daysSince} days ago`}
+                                        {daysSince > 10 && <AlertTriangle size={14} className="text-red-500 animate-bounce" />}
+                                    </span>
+                                </div>
+                                
+                                {/* Status Label (Repositioned for better balance) */}
+                                <div className={`px-3 py-1 rounded-xl shadow-inner ${statusConfig.bgLight} ${statusConfig.bgDark}`}>
+                                    <span className={`text-[10px] font-black uppercase tracking-widest ${statusConfig.text}`}>
+                                        {statusConfig.label}
+                                    </span>
+                                </div>
+                            </div>
 
-                    {/* Full Width Action Button - No longer squashed */}
-                    <div className={`w-full flex items-center justify-center gap-3 bg-gradient-to-r ${statusConfig.color} px-6 py-4 rounded-2xl text-white font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-current/10 transition-all duration-500 hover:scale-[1.02] active:scale-95 group-hover:shadow-[statusConfig.ringColor] 
-                        ${isHovered ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'}`}>
-                        <Zap size={16} fill="currentColor" />
-                        Practice Skill
-                        <ChevronRight size={16} strokeWidth={3} />
-                    </div>
+                            {/* Full Width Action Button - No longer squashed */}
+                            <div className={`w-full flex items-center justify-center gap-3 bg-gradient-to-r ${statusConfig.color} px-6 py-4 rounded-2xl text-white font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-current/10 transition-all duration-500 hover:scale-[1.02] active:scale-95 group-hover:shadow-[statusConfig.ringColor] 
+                                ${isHovered ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'}`}>
+                                <Zap size={16} fill="currentColor" />
+                                Practice Skill
+                                <ChevronRight size={16} strokeWidth={3} />
+                            </div>
+                        </>
+                    )}
                 </div>
             )}
 

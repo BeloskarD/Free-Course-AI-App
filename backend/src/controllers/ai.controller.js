@@ -9,6 +9,7 @@ import { getCache, setCache, getPersistentCache, setPersistentCache } from "../u
 import config from '../config/env.js';
 import queueService from '../services/queueService.js';
 import { normalizeQuery } from '../utils/stringUtils.js';
+import { shapeGatedResponse } from '../utils/response.js';
 
 // --- ZERO-CONFUSION HELPERS ---
 /**
@@ -371,7 +372,7 @@ async function callAIWithFallback(systemPrompt, userPrompt, options = {}) {
 async function searchWithSerper(query, options = {}) {
   const { num = 15 } = options;
   try {
-    const response = await axios.post("https://google.serper.dev/search", { q: query, gl: "in", hl: "en", num }, { headers: { "X-API-KEY": process.env.SERPER_API_KEY }, timeout: 10000 });
+    const response = await axios.post("https://google.serper.dev/search", { q: query, gl: "in", hl: "en", num }, { headers: { "X-API-KEY": process.env.SERPER_API_KEY }, timeout: 6000 });
     return { success: true, results: (response.data?.organic || []).map(r => ({ title: r.title, url: r.link, snippet: r.snippet })) };
   } catch (e) { return { success: false, error: e.message }; }
 }
@@ -385,7 +386,7 @@ async function searchWithTavily(query, options = {}) {
     const response = await axios.post(
       'https://api.tavily.com/search',
       payload,
-      { headers: { Authorization: `Bearer ${process.env.TAVILY_API_KEY}`, 'Content-Type': 'application/json' }, timeout: 15000 }
+      { headers: { Authorization: `Bearer ${process.env.TAVILY_API_KEY}`, 'Content-Type': 'application/json' }, timeout: 8000 }
     );
     const results = (response.data?.results || []).map(r => ({ title: r.title, url: r.url, snippet: r.content }));
     console.log(`[Search] Tavily responded with ${results.length} results for: ${query.substring(0, 50)}...`);
@@ -494,11 +495,18 @@ export async function processAIIntelligenceSearch(jobData) {
   const currentYear = new Date().getFullYear();
   if (!query) throw new Error('Query is required');
 
+  console.log(`🧠 [Worker] Starting AI Intelligence Search for: "${query}" (Mode: ${mode})`);
+
   const cacheKey = getAIIntelCacheKey(query, mode);
   let cachedResult = getCache(cacheKey) || await getPersistentCache(cacheKey);
-  if (cachedResult) return { ...cachedResult, source: 'backend-cache', isCached: true };
+  if (cachedResult) {
+    console.log(`📦 [Worker] Cache hit for: "${query}"`);
+    return { ...cachedResult, source: 'backend-cache', isCached: true };
+  }
 
+  console.log(`🌐 [Worker] Performing comprehensive search for evidence...`);
   let searchData = (mode === 'intelligence' || mode === 'courses') ? await performComprehensiveSearch(query, currentYear) : { courses: [], blueprints: [], videos: [], projects: [] };
+  console.log(`📊 [Worker] Search evidence collected. courses: ${searchData.courses?.length}, videos: ${searchData.videos?.length}`);
 
   let systemPrompt = "";
   if (mode === 'courses') {
@@ -548,8 +556,8 @@ Do not include markdown or conversational text anywhere. Ensure all JSON keys ar
 
 
   const providerChain = [
-    { provider: 'github', label: 'GitHub Expert', execute: () => callGitHubModel(systemPrompt, userPrompt, "gpt-4.1") },
-    { provider: 'github', label: 'GitHub Pro', execute: () => callGitHubModel(systemPrompt, userPrompt, "gpt-4.1-mini") },
+    { provider: 'github', label: 'GitHub Fast', execute: () => callGitHubModel(systemPrompt, userPrompt, "gpt-4.1-mini") },
+    { provider: 'bytez', label: 'Bytez Turbo', execute: () => callBytezModel(systemPrompt, userPrompt, "openai/gpt-4o-mini") },
     { provider: 'groq', label: 'Groq Real-time', execute: async () => {
         const groq = getGroqClient();
         const res = await groq.chat.completions.create({ model: "llama-3.3-70b-versatile", messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }], response_format: { type: 'json_object' } });
@@ -557,9 +565,11 @@ Do not include markdown or conversational text anywhere. Ensure all JSON keys ar
     }}
   ];
 
+  console.log(`🤖 [Worker] Calling AI Model Chain (Providers: GitHub, Groq)...`);
   let parsedData = null;
   for (const attempt of providerChain) {
     try {
+      console.log(`🔄 [Worker] Attempting AI generation with: ${attempt.label}...`);
       const rawContent = await attempt.execute();
       const extracted = extractJSON(rawContent);
       if (extracted) {
@@ -642,8 +652,16 @@ Do not include markdown or conversational text anywhere. Ensure all JSON keys ar
 }
 
 export async function aiSearch(req, res) {
+  console.log(`🚀 [AI Search] Controller reached with query: ${req.body?.query}`);
   const { query, mode = "intelligence" } = req.body;
   if (!query) return res.status(400).json({ error: 'Query is required' });
+  
+  // Track usage for authenticated users
+  if (req.userId && req.usageToIncrement === 'searchLimit') {
+    const { incrementUsage } = await import('../utils/usage.js');
+    await incrementUsage(req.userId, 'searchLimit');
+  }
+
   const cacheKey = getAIIntelCacheKey(query, mode);
   const cached = getCache(cacheKey) || await getPersistentCache(cacheKey);
   if (cached) return res.json(cached);
@@ -711,10 +729,17 @@ Do NOT include markdown formatting or conversational text. Return raw JSON only.
 
 export async function aiSearchJobStatus(req, res) {
   const { jobId } = req.params;
-  const accessKey = req.query.accessKey || null;
+  const accessKey = req.query.accessKey || req.headers['x-job-access-key'] || null;
+  const requesterUserId = req.userId || null;
+  const entitlements = req.entitlements;
+
+  // Prevent browser caching of job status polling
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
 
   try {
-    const jobStatus = await queueService.getJobStatus(jobId, { accessKey });
+    const jobStatus = await queueService.getJobStatus(jobId, { accessKey, requesterUserId });
     
     if (!jobStatus) {
       return res.status(404).json({ success: false, error: 'Job not found' });
@@ -724,14 +749,45 @@ export async function aiSearchJobStatus(req, res) {
       return res.status(403).json({ success: false, error: 'Access denied to this job' });
     }
 
+    // Apply monetization gating to completed AI results
+    if (jobStatus.status === 'completed' && jobStatus.result) {
+      const resultData = jobStatus.result.data || jobStatus.result;
+      const isResumeMode = jobStatus.data?.mode === 'resume';
+      const gated = shapeGatedResponse(resultData, entitlements, {
+        keysToLock: ['skillBreakdown', 'roadmap', 'careerInsights', 'practiceProjects', 'rx_api_response', 'reactive_resume'],
+        maskValue: null, // Let it be null so frontend can detect it
+        lockedMessage: isResumeMode 
+          ? "Upgrade to Pro to view your optimized resume and push to RxResu.me." 
+          : "Upgrade to Pro to unlock the full Neural roadmap and deep skill breakdown.",
+        upgradeHint: isResumeMode
+          ? "Pro members get unlimited AI resume optimizations and direct sync with Reactive Resume."
+          : "Pro members get the complete 2026 mastery trajectory and all project blueprints."
+      });
+
+      return res.json({
+        success: true,
+        data: {
+          status: jobStatus.status,
+          result: {
+            ...gated,
+            query: jobStatus.result.query || jobStatus.data?.query,
+            provider: jobStatus.result.provider || jobStatus.data?.provider,
+            timestamp: jobStatus.result.timestamp || new Date().toISOString()
+          }
+        }
+      });
+    }
+
     return res.json({
       success: true,
-      status: jobStatus.status,
-      data: jobStatus.result,
-      error: jobStatus.error
+      data: {
+        status: jobStatus.status,
+        result: jobStatus.result,
+        error: jobStatus.error
+      }
     });
   } catch (error) {
-    console.error('❌ Job Status Error:', error);
+    console.error('❌ AI Job Status Error:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 }

@@ -9,6 +9,7 @@ import queueService from '../services/queueService.js';
 import { getCache, setCache, getPersistentCache, setPersistentCache } from '../utils/cacheUtils.js';
 import config from '../config/env.js';
 import { normalizeQuery } from '../utils/stringUtils.js';
+import { shapeGatedResponse } from '../utils/response.js';
 
 const getOpenAIClient = () => {
   if (!process.env.OPENAI_API_KEY) {
@@ -180,64 +181,38 @@ export async function processSkillGapAnalysis(jobData) {
 
   const currentYear = new Date().getFullYear();
   let marketData = [];
-  let searchProvider = 'none';
+  let searchProvider = 'parallel-hybrid';
 
   try {
-    console.log('🔍 Using Serper for market research...');
-    const serperResponse = await axios.post(
-      'https://google.serper.dev/search',
-      {
+    console.log('🔍 [Turbo] Running parallel market research (Serper + Tavily)...');
+    
+    // Run searches in parallel for maximum speed
+    const searchStartTime = Date.now();
+    const results = await Promise.allSettled([
+      axios.post('https://google.serper.dev/search', {
         q: `${targetRole} job requirements skills technologies salary India LPA ${currentYear} career roadmap`,
-        gl: 'in',
-        hl: 'en',
-        num: 15
-      },
-      {
-        headers: {
-          'X-API-KEY': process.env.SERPER_API_KEY,
-          'Content-Type': 'application/json'
-        },
-        timeout: 10000
-      }
-    );
+        gl: 'in', hl: 'en', num: 10
+      }, { headers: { 'X-API-KEY': process.env.SERPER_API_KEY }, timeout: 6000 }),
+      
+      axios.post('https://api.tavily.com/search', {
+        query: `${targetRole} job requirements skills technologies ${currentYear} India salary`,
+        search_depth: 'basic', max_results: 8
+      }, { headers: { Authorization: `Bearer ${process.env.TAVILY_API_KEY}` }, timeout: 8000 })
+    ]);
 
-    marketData = serperResponse.data?.organic?.map(r => ({
-      title: r.title,
-      url: r.link,
-      snippet: r.snippet
-    })) || [];
-    searchProvider = 'serper';
-    console.log(`✅ Serper returned ${marketData.length} results`);
-  } catch (serperError) {
-    console.warn('⚠️ Serper failed, trying Tavily:', serperError.message);
+    const serperData = results[0].status === 'fulfilled' ? results[0].value.data?.organic : [];
+    const tavilyData = results[1].status === 'fulfilled' ? results[1].value.data?.results : [];
 
-    try {
-      const tavilyResponse = await axios.post(
-        'https://api.tavily.com/search',
-        {
-          query: `${targetRole} job requirements skills technologies ${currentYear}, ${targetRole} salary range India LPA, ${targetRole} career path roadmap`,
-          search_depth: 'advanced',
-          max_results: 12
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.TAVILY_API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          timeout: 15000
-        }
-      );
+    const combined = [
+      ...(serperData || []).map(r => ({ title: r.title, url: r.link, snippet: r.snippet })),
+      ...(tavilyData || []).map(r => ({ title: r.title, url: r.url, snippet: r.content }))
+    ];
 
-      marketData = tavilyResponse.data?.results?.map(r => ({
-        title: r.title,
-        url: r.url,
-        snippet: r.content
-      })) || [];
-      searchProvider = 'tavily';
-      console.log(`✅ Tavily returned ${marketData.length} results`);
-    } catch (tavilyError) {
-      console.warn('⚠️ Tavily also failed:', tavilyError.message);
-    }
+    marketData = combined.slice(0, 15);
+    const searchDuration = (Date.now() - searchStartTime) / 1000;
+    console.log(`✅ [Turbo] Search complete in ${searchDuration}s. Found ${marketData.length} signals.`);
+  } catch (searchError) {
+    console.warn('⚠️ Parallel search had issues, continuing with minimal data:', searchError.message);
   }
 
   const prompt = `You are an expert AI Career Advisor specializing in premium skill-gap analysis for ${currentYear} tech jobs in India.
@@ -295,35 +270,35 @@ Do not add markdown. Do not add explanations outside JSON. Make it feel like a p
   let analysis = null;
 
   try {
-    console.log('🤖 Attempting GitHub Models GPT-4.1 for skill analysis...');
+    console.log('🤖 [Turbo] Attempting GitHub Models gpt-4.1-mini (High Speed)...');
     const ghResult = await callGitHubModel(
       'You are an expert AI Career Advisor. Return only valid JSON responses.',
       prompt,
-      'gpt-4.1'
+      'gpt-4.1-mini'
     );
 
     if (ghResult) {
       usedProvider = 'github-models';
-      usedModel = 'gpt-4.1';
+      usedModel = 'gpt-4.1-mini';
       aiResponse = ghResult;
-      console.log('✨ [Skill-Gap-Analysis] SUCCESS: GitHub GPT-4.1');
+      console.log('✨ [Skill-Gap-Analysis] SUCCESS: GitHub gpt-4.1-mini');
     } else {
-      throw new Error("Empty GitHub response (gpt-4.1)");
+      throw new Error("Empty GitHub response (gpt-4.1-mini)");
     }
-  } catch (gh41Error) {
-    console.warn('⚠️ GitHub GPT-4.1 failed, falling back to OpenAI:', gh41Error.message);
+  } catch (ghError) {
+    console.warn('⚠️ GitHub Mini failed or slow, falling back to gpt-4o-mini:', ghError.message);
     const openaiClient = getOpenAIClient();
     const completion = await openaiClient.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' },
-      temperature: 0.6
+      temperature: 0.5
     });
     usedProvider = 'openai';
     usedModel = 'gpt-4o-mini';
-    source = 'fallback-engine';
+    source = 'turbo-fallback';
     aiResponse = completion.choices[0].message.content;
-    console.log('✅ OpenAI SUCCESS (fallback)');
+    console.log('✅ OpenAI gpt-4o-mini SUCCESS (fast-fallback)');
   }
 
   analysis = extractJSON(aiResponse);
@@ -383,14 +358,23 @@ export async function analyzeSkillGap(req, res) {
         cachedResult = await getPersistentCache(cacheKey);
     }
 
-    if (cachedResult) {
-      console.log(`🚀 [Double-Shield] QUEUE BYPASS: serving result for "${targetRole}" instantly.`);
-      return res.json({
-          ...cachedResult,
-          isCached: true,
-          message: 'Retrieved from cache'
-      });
-    }
+      if (cachedResult) {
+        console.log(`🚀 [Double-Shield] QUEUE BYPASS: serving result for "${targetRole}" instantly.`);
+        const entitlements = req.entitlements;
+        const resultData = cachedResult.data || cachedResult;
+        const gated = shapeGatedResponse(resultData, entitlements, {
+            keysToLock: ['skillGaps', 'nextSteps', 'marketOutlook'],
+            lockedMessage: "Upgrade to Pro to unlock the full skill-gap analysis and strategic next steps.",
+            upgradeHint: "Pro users get precise time-to-job-ready estimates and exclusive resource links."
+        });
+        return res.json({
+            ...gated,
+            provider: cachedResult.provider,
+            model: cachedResult.model,
+            isCached: true,
+            message: 'Retrieved from cache'
+        });
+      }
 
     // --- JOB DEDUPLICATION LAYER ---
     const activeJob = await queueService.findActiveJob('analyze_skill_gap', { targetRole: normalizedRole });
@@ -423,6 +407,64 @@ export async function analyzeSkillGap(req, res) {
     res.status(500).json({ success: false, error: 'Failed to queue analysis job' });
   }
 }
+
+/**
+ * SKILL GAP JOB STATUS ENDPOINT
+ * GET /api/skill-analysis/job-status/:jobId
+ */
+export async function analyzeSkillGapStatus(req, res) {
+  const { jobId } = req.params;
+  const accessKey = req.query.accessKey || req.headers['x-job-access-key'];
+  const requesterUserId = req.userId || null;
+  const entitlements = req.entitlements;
+
+  try {
+    const jobStatus = await queueService.getJobStatus(jobId, { accessKey, requesterUserId });
+    
+    if (!jobStatus) {
+      return res.status(404).json({ success: false, error: 'Analysis job not found' });
+    }
+
+    if (jobStatus.forbidden) {
+      return res.status(403).json({ success: false, error: 'Access denied to this analysis' });
+    }
+
+    // Apply monetization gating to completed AI results
+    if (jobStatus.status === 'completed' && jobStatus.result) {
+      const resultData = jobStatus.result.data || jobStatus.result;
+      const gated = shapeGatedResponse(resultData, entitlements, {
+          keysToLock: ['skillGaps', 'nextSteps', 'marketOutlook'],
+          maskValue: "Upgrade to Pro to unlock",
+          lockedMessage: "Upgrade to Pro to unlock the full skill-gap analysis and strategic next steps.",
+          upgradeHint: "Pro users get precise time-to-job-ready estimates and exclusive resource links."
+      });
+
+      return res.json({
+        success: true,
+        data: {
+            status: jobStatus.status,
+            result: {
+                ...gated,
+                provider: jobStatus.result.provider,
+                model: jobStatus.result.model
+            }
+        }
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+          status: jobStatus.status,
+          result: jobStatus.result,
+          error: jobStatus.error
+      }
+    });
+  } catch (error) {
+    console.error('❌ Skill Analysis Status Error:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+}
 /**
  * 2. LEARNING VELOCITY CALCULATOR
  * Calculates user's learning speed based on course completion patterns
@@ -453,24 +495,28 @@ export async function calculateLearningVelocity(req, res) {
       advanced: Math.ceil(25 / velocity) || 20 // 25 courses
     };
 
-    res.json({
-      success: true,
-      data: {
-        velocity: parseFloat(velocity),
-        coursesCompleted: coursesCount,
-        accountAgeWeeks: accountAge,
-        predictions: {
-          beginnerTrack: `${predictions.beginner} weeks`,
-          intermediateTrack: `${predictions.intermediate} weeks`,
-          advancedTrack: `${predictions.advanced} weeks`
-        },
-        insight: velocity > 1
-          ? 'You\'re learning at an excellent pace! 🚀'
-          : velocity > 0.5
-            ? 'Steady progress! Consider increasing your pace.'
-            : 'Start adding courses to track your velocity.'
-      }
+    const velocityResult = {
+      velocity: parseFloat(velocity),
+      coursesCompleted: coursesCount,
+      accountAgeWeeks: accountAge,
+      predictions: {
+        beginnerTrack: `${predictions.beginner} weeks`,
+        intermediateTrack: `${predictions.intermediate} weeks`,
+        advancedTrack: `${predictions.advanced} weeks`
+      },
+      insight: velocity > 1
+        ? 'You\'re learning at an excellent pace! 🚀'
+        : velocity > 0.5
+          ? 'Steady progress! Consider increasing your pace.'
+          : 'Start adding courses to track your velocity.'
+    };
+
+    const gated = shapeGatedResponse(velocityResult, req.entitlements, {
+      lockedMessage: "Upgrade to Pro to unlock real-time learning velocity telemetry.",
+      upgradeHint: "Pro members get predictive trajectory analysis and mastery window estimates."
     });
+
+    res.json(gated);
 
   } catch (error) {
     console.error('❌ Velocity Calculation Error:', error);
@@ -514,14 +560,18 @@ export async function estimateSkillProficiency(req, res) {
       status: count >= 3 ? 'Proficient' : count >= 2 ? 'Intermediate' : 'Beginner'
     }));
 
-    res.json({
-      success: true,
-      data: {
-        totalSkills: skillsProficiency.length,
-        skills: skillsProficiency.sort((a, b) => b.level - a.level).slice(0, 8), // Top 8
-        averageProficiency: skillsProficiency.reduce((sum, s) => sum + s.level, 0) / skillsProficiency.length || 0
-      }
+    const result = {
+      totalSkills: skillsProficiency.length,
+      skills: skillsProficiency.sort((a, b) => b.level - a.level).slice(0, 8), // Top 8
+      averageProficiency: skillsProficiency.reduce((sum, s) => sum + s.level, 0) / skillsProficiency.length || 0
+    };
+
+    const gated = shapeGatedResponse(result, req.entitlements, {
+      lockedMessage: "Upgrade to Pro to unlock detailed skill proficiency mapping.",
+      upgradeHint: "Pro members see their exact technical standing across 20+ core capabilities."
     });
+
+    res.json(gated);
 
   } catch (error) {
     console.error('❌ Proficiency Estimation Error:', error);
@@ -609,19 +659,19 @@ Return ONLY valid JSON:
       console.log('✅ OpenAI response received (fallback)');
     }
 
-    res.json({
-      success: true,
-      data: suggestions
+    const gated = shapeGatedResponse(suggestions, req.entitlements, {
+      keysToLock: ['reasoning', 'avgSalary'],
+      lockedMessage: "Upgrade to Pro to unlock premium career path suggestions and salary insights.",
+      upgradeHint: "Pro members get 2026 predictive demand levels and custom career logic."
     });
+
+    res.json(gated);
 
   } catch (error) {
     console.error('❌ Career Path Suggestion Error:', error);
 
     // Fallback
-    res.json({
-      success: true,
-      source: 'fallback',
-      data: {
+    const fallbackData = {
         careerPaths: [
           {
             role: 'Full Stack Developer',
@@ -660,7 +710,13 @@ Return ONLY valid JSON:
             timeToReady: '5-6 months'
           }
         ]
-      }
+      };
+      
+    const gated = shapeGatedResponse(fallbackData, req.entitlements, {
+        keysToLock: ['reasoning', 'avgSalary'],
+        lockedMessage: "Upgrade to Pro to unlock premium career path suggestions and salary insights.",
+        upgradeHint: "Pro members get 2026 predictive demand levels and custom career logic."
     });
+    res.json(gated);
   }
 }

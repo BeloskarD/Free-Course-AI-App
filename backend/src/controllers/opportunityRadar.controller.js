@@ -1,5 +1,6 @@
 import opportunityRadarService from '../services/opportunityRadar.service.js';
 import aiOpportunityScannerService from '../services/aiOpportunityScanner.service.js';
+import { shapeGatedResponse } from '../utils/response.js';
 
 /**
  * OPPORTUNITY RADAR CONTROLLER
@@ -24,6 +25,7 @@ export const getRadar = async (req, res) => {
     try {
         const userId = req.userId;
         const limit = parseInt(req.query.limit) || 10;
+        const entitlements = req.entitlements;
 
         // AUTO-SCAN: If no recent signals, trigger AI scanner automatically
         try {
@@ -36,7 +38,18 @@ export const getRadar = async (req, res) => {
         }
 
         const matches = await opportunityRadarService.getRadar(userId, limit);
-        res.json({ success: true, data: matches });
+        
+        // Standardized Gating:
+        // - Free users see limited matches (3)
+        // - Nested insights (gapAnalysis, aiReasoning) are recursively masked
+        const gatedResult = shapeGatedResponse(matches, entitlements, {
+            lockedMessage: "Upgrade to Pro to unlock precise skill gap analysis and the full opportunity list.",
+            upgradeHint: "Pro users see 3x more opportunities and get custom advice for each role.",
+            keysToLock: ['gapAnalysis', 'aiReasoning'],
+            maskValue: "Upgrade to Pro to unlock AI-driven match reasoning."
+        });
+
+        res.json(gatedResult);
     } catch (error) {
         console.error('[OpportunityRadar] getRadar error:', error);
         res.status(500).json({ success: false, error: error.message });

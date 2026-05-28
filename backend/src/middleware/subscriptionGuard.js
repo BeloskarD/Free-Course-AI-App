@@ -1,85 +1,120 @@
 import User from '../models/User.js';
-import UserProgress from '../models/UserProgress.js';
-import { getFeatureLimit, hasFeatureAccess } from '../config/billing.js';
+import { getEntitlement, hasFeatureAccess } from '../config/billing.js';
+import { incrementUsage } from '../utils/usage.js';
+import logger from '../utils/logger.js';
 
 /**
- * SUBSCRIPTION GUARD (Zeeklect v3)
- * ===============================
- * Tiered access control with soft limits.
+ * Usage Recording Helpers
+ */
+export const recordValidationUsage = async (userId) => incrementUsage(userId, 'validationLimit');
+export const recordSearchUsage = async (userId) => incrementUsage(userId, 'searchLimit');
+export const recordChatUsage = async (userId) => incrementUsage(userId, 'chatLimit');
+
+/**
+ * ZEEKLECT SUBSCRIPTION & ENTITLEMENT GUARD
+ * ========================================
+ * Production-ready tiered access control.
  */
 
-export const subscriptionGuard = (feature, limit = 0) => {
+export const subscriptionGuard = (feature, options = {}) => {
   return async (req, res, next) => {
     try {
-      const user = await User.findById(req.userId);
-      if (!user) return res.status(404).json({ error: 'User not found' });
+      let tier = 'free';
+      let user = null;
 
-      // Pro users always pass
-      if (user.subscriptionTier === 'pro') return next();
+      if (req.userId) {
+        user = await User.findById(req.userId);
+        if (user) {
+          tier = user.subscriptionTier || 'free';
+        }
+      }
 
-      const resolvedLimit = Number.isFinite(limit) && limit > 0 ? limit : getFeatureLimit(user.subscriptionTier, feature);
+      // If no user found and it's mandatory, we block. 
+      // But for optionalAuth routes, we treat as 'free' tier.
+      if (!user && options.requireUser) {
+        return res.status(401).json({ error: 'Unauthorized', message: 'Authentication required for this feature' });
+      }
 
-      // Feature specific gating
-      if (feature === 'validation_limit') {
-        const currentWeek = getYearWeek();
-        const progress = await UserProgress.findOne({ userId: req.userId });
-        
-        const weekUsage = progress?.validationUsage?.find(u => u.week === currentWeek);
-        const count = weekUsage?.count || 0;
+      // 1. Hard Feature Access Check
+      if (options.requireFeature && !hasFeatureAccess(tier, options.requireFeature)) {
+        return res.status(403).json({
+          success: false,
+          locked: true,
+          error: 'FeatureLocked',
+          message: `The ${options.requireFeature.replace(/([A-Z])/g, ' $1').trim()} feature is not available on the ${tier} tier.`,
+          upgradeHint: options.upgradeHint || `Upgrade to Pro to unlock this feature.`
+        });
+      }
 
-        if (count >= resolvedLimit) {
+      // 2. Usage Limit Check
+      if (options.limitKey) {
+        const limit = getEntitlement(tier, options.limitKey);
+        const currentUsage = await getCurrentUsage(user, options.limitKey);
+
+        if (currentUsage >= limit) {
           return res.status(403).json({
             success: false,
             limitReached: true,
-            tier: 'free',
-            feature: 'Skill Validation',
-            message: `Weekly verification limit reached (${resolvedLimit}/week for Free tier).`,
-            unlockCta: 'Unlock Unlimited Validations with Pro'
+            error: 'LimitReached',
+            message: `You've reached your ${tier} tier limit for ${options.limitKey.replace(/([A-Z])/g, ' $1').trim()}.`,
+            usage: { current: currentUsage, limit },
+            upgradeHint: `Upgrade to unlock higher limits.`
           });
         }
+        
+        // Pass limit info to request for incrementing later
+        req.usageToIncrement = options.limitKey;
       }
 
-      if (feature === 'advanced_insights') {
-        if (hasFeatureAccess(user.subscriptionTier, 'advancedInsights')) {
-          return next();
-        }
-
-        // Soft gate: Allow preview but flag as pro for frontend to hide details
-        req.isProRequested = true;
-        return next();
-      }
+      // 3. Depth/Output Level Injection
+      // We don't block here, but we tell the service what level of data to return
+      req.entitlements = {
+        tier,
+        chatDepth: getEntitlement(tier, 'chatDepth'),
+        insightDetail: getEntitlement(tier, 'insightDetail'),
+        resumeAccess: getEntitlement(tier, 'resumeAccess')
+      };
 
       next();
     } catch (error) {
+      logger.error({ error: error.message, stack: error.stack }, '[SubscriptionGuard] Middleware Error');
       next(error);
     }
   };
 };
 
-export async function recordValidationUsage(userId) {
-  const currentWeek = getYearWeek();
-  const progress = await UserProgress.findOne({ userId });
+/**
+ * Usage Helper
+ */
+async function getCurrentUsage(user, limitKey) {
+  if (!user) return 0;
+  const now = new Date();
+  const lastReset = user.usage?.lastResetDate || new Date(0);
+  
+  const isDifferentDay = now.toDateString() !== lastReset.toDateString();
+  const isDifferentWeek = getYearWeek(now) !== getYearWeek(lastReset);
 
-  if (!progress) {
-    await UserProgress.create({
-      userId,
-      validationUsage: [{ week: currentWeek, count: 1 }],
-    });
-    return;
+  // Daily Resets
+  if (['chatLimit', 'searchLimit'].includes(limitKey) && isDifferentDay) {
+    return 0; 
   }
 
-  const existing = progress.validationUsage?.find((entry) => entry.week === currentWeek);
-  if (existing) {
-    existing.count += 1;
-  } else {
-    progress.validationUsage = [...(progress.validationUsage || []), { week: currentWeek, count: 1 }].slice(-12);
+  // Weekly Resets
+  if (['validationLimit'].includes(limitKey) && isDifferentWeek) {
+    return 0;
   }
 
-  await progress.save();
+  // Return current count from DB
+  switch (limitKey) {
+    case 'chatLimit': return user.usage?.dailyChatCount || 0;
+    case 'searchLimit': return user.usage?.dailySearchCount || 0;
+    case 'validationLimit': return user.usage?.weeklyValidationCount || 0;
+    case 'resumeLimit': return user.usage?.monthlyResumeCount || 0;
+    default: return 0;
+  }
 }
 
-function getYearWeek() {
-  const d = new Date();
+function getYearWeek(d) {
   const date = new Date(d.getTime());
   date.setHours(0, 0, 0, 0);
   date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);

@@ -24,6 +24,10 @@ class MomentumService {
         const user = await userRepository.findById(userId);
         if (!user) throw new Error('User not found');
 
+        // Fetch LearnerProfile early to use for both Streak and Skill Progress
+        const { learnerProfileRepository } = await import('../repositories/index.js');
+        const profile = await learnerProfileRepository.findByUserId(userId);
+
         // ==== LEGACY DATA (Kept intact to preserve other page functionalities) ====
         let userProgress = await userProgressRepository.findByUserId(userId);
         if (!userProgress) {
@@ -43,14 +47,35 @@ class MomentumService {
         const { UserMissionProgress } = await import('../models/Mission.js');
         const userMissions = await UserMissionProgress.find({ userId }).populate('missionId');
         
-        const legacySkills = calculateSkillProgress(userProgress, user, userMissions);
+        // Merge LearnerProfile skills as the source of truth for Momentum skills
+        const healthSkills = profile?.masteredSkills || [];
+        const momentumSkillsSource = healthSkills.length > 0 ? healthSkills : userProgress.skills;
         
-        const allAchievements = await achievementRepository.findAll();
-        const userAchievements = await checkAchievements(userId, userProgress, allAchievements);
+        // Pass the resolved skills array as a temporary progress object
+        const legacySkills = calculateSkillProgress({ skills: momentumSkillsSource }, user, userMissions);
         
         // Count completed missions (Courses Completed)
         const completedMissions = userMissions.filter(m => m.status === 'completed');
         const totalCourses = completedMissions.length;
+
+        let currentStreak = 0;
+        let maxStreak = 0;
+        
+        if (profile?.wellbeing) {
+            currentStreak = profile.wellbeing.wellnessStreak || 0;
+            maxStreak = profile.wellbeing.wellnessStreak || 0; // Using current as max for now if max not tracked separately
+        } else if (profile?.recentSessions && profile.recentSessions.length > 0) {
+            // Basic fallback calculation for active days
+            currentStreak = 1; 
+            maxStreak = 1;
+        }
+
+        const allAchievements = await achievementRepository.findAll();
+        const userAchievements = await checkAchievements(userId, userProgress, allAchievements, {
+            completedCoursesCount: totalCourses,
+            currentStreak: currentStreak,
+            skills: momentumSkillsSource
+        });
         
         // Sum total hours from stage progress
         let totalMinutes = 0;
@@ -78,21 +103,6 @@ class MomentumService {
         let velocityTrend = 0;
         if (completedPrevWeek > 0) {
             velocityTrend = Math.round(((completedThisWeek - completedPrevWeek) / completedPrevWeek) * 100);
-        }
-
-        // Fetch Streak from LearnerProfile
-        const { learnerProfileRepository } = await import('../repositories/index.js');
-        const profile = await learnerProfileRepository.findByUserId(userId);
-        let currentStreak = 0;
-        let maxStreak = 0;
-        
-        if (profile?.wellbeing) {
-            currentStreak = profile.wellbeing.wellnessStreak || 0;
-            maxStreak = profile.wellbeing.wellnessStreak || 0; // Using current as max for now if max not tracked separately
-        } else if (profile?.recentSessions && profile.recentSessions.length > 0) {
-            // Basic fallback calculation for active days
-            currentStreak = 1; 
-            maxStreak = 1;
         }
 
         return {
@@ -252,7 +262,7 @@ class MomentumService {
      * Advanced streak tracking with history preservation
      */
     async updateStreak(userId) {
-        const { UserProgress } = await import('../models/UserProgress.js');
+        const UserProgress = (await import('../models/UserProgress.js')).default;
         const progress = await UserProgress.findOne({ userId });
         if (!progress) return;
 

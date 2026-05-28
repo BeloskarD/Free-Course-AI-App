@@ -143,3 +143,19 @@ export const updatePreferences = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+export const updateTier = async (req, res) => {
+    try {
+        const { tier } = req.body;
+        if (!tier) return res.status(400).json({ error: "Tier is required" });
+
+        const user = await userService.updateTier(req.userId, tier);
+        res.json({
+            success: true,
+            message: `User tier updated to ${tier}`,
+            subscriptionTier: user.subscriptionTier
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};

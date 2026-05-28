@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/ai-learning-platform';
-const TARGET_EMAIL = 'beloskardinesh@gmail.com';
+const TARGET_EMAIL = 'd@gamil.com';
 const TEMP_PASSWORD = 'password123'; // The password we want to set
 
 async function setPassword() {

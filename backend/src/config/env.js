@@ -49,6 +49,8 @@ export const config = {
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
   stripeProPriceId: process.env.STRIPE_PRO_PRICE_ID || '',
   stripeProPriceAmount: Number(process.env.STRIPE_PRO_PRICE_AMOUNT || 12),
+  stripeCareerPlusPriceId: process.env.STRIPE_CAREER_PLUS_PRICE_ID || '',
+  stripeCareerPlusPriceAmount: Number(process.env.STRIPE_CAREER_PLUS_PRICE_AMOUNT || 49),
   stripeCheckoutSuccessUrl: process.env.STRIPE_CHECKOUT_SUCCESS_URL || '',
   stripeCheckoutCancelUrl: process.env.STRIPE_CHECKOUT_CANCEL_URL || '',
   stripeBillingReturnUrl: process.env.STRIPE_BILLING_RETURN_URL || '',

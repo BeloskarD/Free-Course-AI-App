@@ -19,7 +19,7 @@ export const getInterventions = async (req, res) => {
     try {
         const userId = req.userId;
         const interventions = await reinforcementService.getActiveInterventions(userId);
-        res.json({ success: true, data: interventions });
+        res.json({ success: true, interventions });
     } catch (error) {
         console.error('[Reinforcement] interventions error:', error);
         res.status(500).json({ success: false, error: error.message });

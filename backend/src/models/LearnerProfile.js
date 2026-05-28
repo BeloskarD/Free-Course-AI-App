@@ -461,11 +461,14 @@ const learnerProfileSchema = new mongoose.Schema({
         // ========== THEME & DISPLAY ==========
         portfolioTheme: {
             type: String,
-            enum: ['professional', 'creative', 'minimalist', 'tech', 'executive'],
+            enum: ['professional', 'creative', 'minimalist', 'tech', 'executive', 'glassmorphism'],
             default: 'professional'
         },
         accentColor: { type: String, default: '#4f46e5' },    // Custom accent color
         showZeeklectBadge: { type: Boolean, default: true },
+        hologramEnabled: { type: Boolean, default: true },
+        shimmerEnabled: { type: Boolean, default: true },
+        hiddenMissions: [{ type: String }],
 
         // ========== PRIVACY CONTROLS ==========
         privacySettings: {
@@ -476,7 +479,8 @@ const learnerProfileSchema = new mongoose.Schema({
             showReferences: { type: Boolean, default: false },
             showAge: { type: Boolean, default: false },
             isPublic: { type: Boolean, default: true },
-            allowIndexing: { type: Boolean, default: true }   // For SEO crawlers
+            allowIndexing: { type: Boolean, default: true },   // For SEO crawlers
+            disableFallbacks: { type: Boolean, default: false }
         },
 
         // ========== PORTFOLIO ANALYTICS ==========

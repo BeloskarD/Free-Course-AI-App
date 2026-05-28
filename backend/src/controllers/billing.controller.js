@@ -16,7 +16,8 @@ class BillingController {
       if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
       const source = req.body?.source || 'pricing_page';
-      const session = await billingService.createCheckoutSession(user, source);
+      const planId = req.body?.tier || 'pro';
+      const session = await billingService.createCheckoutSession(user, source, planId);
       res.json({ success: true, data: session });
     } catch (error) {
       next(error);

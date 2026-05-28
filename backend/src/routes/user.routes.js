@@ -29,4 +29,6 @@ router.post("/save-analysis", authenticate, userController.saveAnalysis);
 router.get("/saved-analyses", authenticate, userController.getSavedAnalyses);
 router.delete("/saved-analyses/:role", authenticate, userController.deleteAnalysis);
 
+router.put("/profile/tier", authenticate, userController.updateTier);
+
 export default router;

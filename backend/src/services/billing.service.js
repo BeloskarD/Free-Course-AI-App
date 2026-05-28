@@ -55,40 +55,46 @@ class BillingService {
     }));
   }
 
-  async createCheckoutSession(user, source = 'pricing_page') {
+  async createCheckoutSession(user, source = 'pricing_page', planId = 'pro') {
     if (!user?.id) {
       const error = new Error('Authenticated user is required to start checkout.');
       error.statusCode = 401;
       throw error;
     }
 
-    if (user.subscriptionTier === 'pro' && ACTIVE_SUBSCRIPTION_STATUSES.has(user.billing?.subscriptionStatus)) {
-      const error = new Error('Your Pro subscription is already active.');
+    if (ACTIVE_SUBSCRIPTION_STATUSES.has(user.billing?.subscriptionStatus) && user.subscriptionTier === planId) {
+      const error = new Error(`Your ${planId} subscription is already active.`);
       error.statusCode = 409;
       throw error;
     }
 
     const stripe = this.getStripeClient();
-    const proPlan = getPlanConfig('pro');
+    let plan = getPlanConfig(planId);
+    // Fallback to Pro if requested tier has no Stripe price configured
+    if (!plan.stripePriceId) {
+      logger.warn({ planId }, '[Billing] Requested plan has no stripePriceId, falling back to pro');
+      planId = 'pro';
+      plan = getPlanConfig('pro');
+    }
     const customerId = await this.ensureCustomer(user);
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: customerId,
-      line_items: [{ price: proPlan.stripePriceId, quantity: 1 }],
+      line_items: [{ price: plan.stripePriceId, quantity: 1 }],
       success_url: `${config.stripeCheckoutSuccessUrl}?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: config.stripeCheckoutCancelUrl,
       client_reference_id: String(user.id),
       allow_promotion_codes: false,
       metadata: {
         userId: String(user.id),
-        planId: 'pro',
+        planId,
         source,
       },
       subscription_data: {
         metadata: {
           userId: String(user.id),
-          planId: 'pro',
+          planId,
           source,
         },
       },
@@ -230,7 +236,7 @@ class BillingService {
 
     await User.findByIdAndUpdate(user._id, {
       $set: {
-        subscriptionTier: ACTIVE_SUBSCRIPTION_STATUSES.has(subscription.status) ? 'pro' : 'free',
+        subscriptionTier: ACTIVE_SUBSCRIPTION_STATUSES.has(subscription.status) ? planId : 'free',
         'billing.provider': BILLING_PROVIDER,
         'billing.stripeCustomerId': subscription.customer || user.billing?.stripeCustomerId || null,
         'billing.stripeSubscriptionId': subscription.id,

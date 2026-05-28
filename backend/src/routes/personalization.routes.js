@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticate } from '../middleware/auth.js';
+import { subscriptionGuard } from '../middleware/subscriptionGuard.js';
 import {
     getProfile,
     updateProfile,
@@ -22,11 +23,11 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticate);
 
-// Profile endpoints
+// Profile endpoints — unguarded (core UX)
 router.get('/profile', getProfile);
 router.post('/profile', updateProfile);
 
-// Weekly plan endpoints
+// Weekly plan endpoints — unguarded (core UX)
 router.get('/plan', async (req, res) => {
     const LearnerProfile = (await import('../models/LearnerProfile.js')).default;
     const profile = await LearnerProfile.findOne({ userId: req.userId });
@@ -34,24 +35,24 @@ router.get('/plan', async (req, res) => {
 });
 router.post('/plan/generate', generateWeeklyPlan);
 
-// Task management
+// Task management — unguarded (core UX)
 router.patch('/task/:taskId', updateTaskStatus);
 
-// Session logging
+// Session logging — unguarded
 router.post('/session', logSession);
 
-// Skill graph
-router.get('/skill-graph', getSkillGraph);
-router.get('/readiness', getReadiness);
+// Skill graph & readiness — entitlements injected for response shaping
+router.get('/skill-graph', subscriptionGuard('personalization'), getSkillGraph);
+router.get('/readiness', subscriptionGuard('personalization'), getReadiness);
 
 // ═══════════════════════════════════════════════════════════════
-// 🧘 WELLBEING & BURNOUT PREVENTION ROUTES
+// 🧘 WELLBEING & BURNOUT PREVENTION ROUTES — unguarded (core UX)
 // ═══════════════════════════════════════════════════════════════
-router.get('/wellbeing', getWellbeingStatus);           // Get burnout risk & wellbeing status
-router.post('/wellbeing/break', logBreak);               // Log a break taken
-router.post('/wellbeing/streak-pause', requestStreakPause); // Schedule guilt-free rest day
-router.post('/wellbeing/mood', logMood);                 // Log mood check-in
-router.patch('/wellbeing/settings', updateWellbeingSettings); // Update rest day preferences
-router.post('/wellbeing/dismiss-break', dismissBreakReminder); // Track dismissed reminders
+router.get('/wellbeing', getWellbeingStatus);
+router.post('/wellbeing/break', logBreak);
+router.post('/wellbeing/streak-pause', requestStreakPause);
+router.post('/wellbeing/mood', logMood);
+router.patch('/wellbeing/settings', updateWellbeingSettings);
+router.post('/wellbeing/dismiss-break', dismissBreakReminder);
 
 export default router;

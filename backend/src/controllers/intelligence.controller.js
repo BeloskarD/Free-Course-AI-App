@@ -1,9 +1,13 @@
 import achievementProofService from '../services/achievementProof.service.js';
+import { shapeGatedResponse, getCuriosityHint } from '../utils/response.js';
 
 /**
  * INTELLIGENCE CONTROLLER
  * =======================
- * Achievement Proofs & Career Intelligence API.
+ * CORRECTION 2: Progressive reveal for intelligence feed.
+ * Free: hiring signal counts, partial matches, basic awareness
+ * Pro: full insights
+ * Career+: strategic recommendations + predictive insights
  */
 
 export const getProofs = async (req, res) => {
@@ -14,7 +18,26 @@ export const getProofs = async (req, res) => {
             status: req.query.status,
             limit: parseInt(req.query.limit) || 50
         });
-        res.json({ success: true, data: proofs });
+
+        // If no entitlements or paid tier, return full data
+        if (!req.entitlements || req.entitlements.tier === 'pro' || req.entitlements.tier === 'career_plus') {
+            return res.json({ success: true, data: proofs, tier: req.entitlements?.tier || 'free' });
+        }
+
+        // Free: show partial proofs with locked strategic details
+        const shaped = shapeGatedResponse(proofs, req.entitlements, {
+            partialCount: 3,
+            keysToLock: [
+                'recruiterReasoning', 'strategicRecommendations',
+                'companyPrioritization', 'predictiveInsights',
+                'competitiveAnalysis', 'industryBenchmark'
+            ],
+            featureArea: 'intelligence',
+            upgradeHint: 'See what recruiters notice first with Pro.',
+            lockedMessage: getCuriosityHint('intelligence')
+        });
+
+        res.json(shaped);
     } catch (error) {
         console.error('[Intelligence] getProofs error:', error);
         res.status(500).json({ success: false, error: error.message });
@@ -38,7 +61,26 @@ export const getRecruiterFeed = async (req, res) => {
         const feed = await achievementProofService.getRecruiterFeed({
             limit: parseInt(req.query.limit) || 25
         });
-        res.json({ success: true, data: feed });
+
+        // If no entitlements or paid tier, return full data
+        if (!req.entitlements || req.entitlements.tier === 'pro' || req.entitlements.tier === 'career_plus') {
+            return res.json({ success: true, data: feed, tier: req.entitlements?.tier || 'free' });
+        }
+
+        // Free: show signal counts and partial matches, lock recruiter reasoning
+        const shaped = shapeGatedResponse(feed, req.entitlements, {
+            partialCount: 3,
+            keysToLock: [
+                'recruiterReasoning', 'strategicRecommendations',
+                'companyPrioritization', 'predictiveInsights',
+                'detailedAnalysis', 'hiringProbability'
+            ],
+            featureArea: 'intelligence',
+            upgradeHint: 'Unlock the full recruiter intelligence feed.',
+            lockedMessage: getCuriosityHint('intelligence')
+        });
+
+        res.json(shaped);
     } catch (error) {
         console.error('[Intelligence] recruiterFeed error:', error);
         res.status(500).json({ success: false, error: error.message });

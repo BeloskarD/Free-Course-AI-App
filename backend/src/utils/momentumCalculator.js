@@ -109,21 +109,25 @@ export const generateWeeklyProgress = (userProgress) => {
   return weeklyData;
 };
 
-// Calculate skill progress
 export const calculateSkillProgress = (userProgress, user, userMissions = []) => {
   const skills = userProgress.skills || [];
   
   return skills.map(skill => {
     // RCA Fix: Aggregate mission data for this specific skill to fix "0h" and "Never" bugs
-    const normalizedTarget = skill.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const target = skill.name.toLowerCase();
+    
+    // Filter matching missions (completed or in-progress) to sum hours spent
     const skillMissions = userMissions.filter(m => {
-      const skillName = m.missionId?.skill || m.skill; // Support both populated and unpopulated for safety
-      if (!skillName) return false;
-      const mSkillNorm = skillName.toLowerCase().replace(/[^a-z0-9]/g, '');
-      return mSkillNorm === normalizedTarget && m.status === 'completed';
+      if (!m.missionId) return false;
+      const title = (m.missionId.title || '').toLowerCase();
+      const category = (m.missionId.category || '').toLowerCase();
+      const missionSkill = (m.missionId.skill || '').toLowerCase();
+      
+      // Intelligent matching: check skill field OR category OR if title contains the skill name
+      return (missionSkill === target || category === target || title.includes(target));
     });
 
-    const coursesDone = skillMissions.length;
+    const coursesDone = skillMissions.filter(m => m.status === 'completed').length;
     let totalMinutes = 0;
     let lastDate = skill.lastPracticed;
 
@@ -133,10 +137,10 @@ export const calculateSkillProgress = (userProgress, user, userMissions = []) =>
         totalMinutes += (sp.timeSpent || 0);
       });
       
-      // Track most recent completion
-      const compDate = new Date(m.completedAt || m.updatedAt);
-      if (!lastDate || compDate > new Date(lastDate)) {
-        lastDate = compDate;
+      // Track most recent activity
+      const activityDate = new Date(m.completedAt || m.updatedAt);
+      if (!lastDate || activityDate > new Date(lastDate)) {
+        lastDate = activityDate;
       }
     });
 
@@ -147,35 +151,35 @@ export const calculateSkillProgress = (userProgress, user, userMissions = []) =>
     return {
       name: skill.name,
       category: skill.category || 'General',
-      progress: skill.progress || 0,
+      progress: skill.progress || skill.level || 0,
       coursesCompleted: coursesDone || skill.coursesCompleted || 0,
-      hoursSpent: Math.max(skill.hoursSpent || 0, Math.round(totalMinutes / 60)),
+      hoursSpent: Math.max(skill.hoursSpent || 0, Math.ceil(totalMinutes / 60)),
       lastPracticed: lastDate 
         ? moment(lastDate).fromNow()
         : 'Never',
-      nextMilestone: getNextMilestone(skill.progress),
+      nextMilestone: getNextMilestone(skill.progress || skill.level || 0),
       description: `Progress in ${skill.name}`,
     };
   });
 };
 
 // Check and return achievements with unlock status
-export const checkAchievements = async (userId, userProgress, allAchievements) => {
+export const checkAchievements = async (userId, userProgress, allAchievements, options = {}) => {
   const unlockedIds = (userProgress?.unlockedAchievements || []).map(a => 
     a.achievementId.toString()
   );
 
   return allAchievements.map(achievement => {
-    const isUnlocked = unlockedIds.includes(achievement._id.toString());
-    
     let progress = 0;
-    if (!isUnlocked && achievement.criteria) {
-      progress = calculateAchievementProgress(achievement.criteria, userProgress);
+    if (achievement.criteria) {
+      progress = calculateAchievementProgress(achievement.criteria, userProgress, options);
     }
 
-    const unlocked = userProgress?.unlockedAchievements.find(
+    const unlockedEntry = (userProgress?.unlockedAchievements || []).find(
       a => a.achievementId.toString() === achievement._id.toString()
     );
+
+    const isUnlocked = !!unlockedEntry || progress >= 100;
 
     return {
       id: achievement._id,
@@ -184,7 +188,7 @@ export const checkAchievements = async (userId, userProgress, allAchievements) =
       type: achievement.type,
       rarity: achievement.rarity,
       unlocked: isUnlocked,
-      unlockedDate: unlocked ? moment(unlocked.unlockedAt).fromNow() : null,
+      unlockedDate: unlockedEntry ? moment(unlockedEntry.unlockedAt).fromNow() : (isUnlocked ? 'Recently Earned' : null),
       reward: achievement.reward,
       progress: !isUnlocked ? progress : undefined,
     };
@@ -201,21 +205,30 @@ function getNextMilestone(progress) {
 }
 
 // Helper: Calculate achievement progress
-function calculateAchievementProgress(criteria, userProgress) {
+function calculateAchievementProgress(criteria, userProgress, options = {}) {
   if (!userProgress) return 0;
 
   switch (criteria.type) {
     case 'courses_completed':
-      const completed = (userProgress.coursesCompleted || []).length;
+      const completed = typeof options.completedCoursesCount === 'number'
+        ? options.completedCoursesCount
+        : Math.max((userProgress.coursesCompleted || []).length, 0);
       return Math.min((completed / criteria.value) * 100, 100);
     
     case 'streak_days':
-      const streak = userProgress.currentStreak || 0;
+      const streak = typeof options.currentStreak === 'number'
+        ? options.currentStreak
+        : (userProgress.currentStreak || 0);
       return Math.min((streak / criteria.value) * 100, 100);
     
     case 'skill_mastery':
-      const skill = (userProgress.skills || []).find(s => s.name === criteria.skillName);
-      return skill ? skill.progress : 0;
+      const skillsList = options.skills || userProgress.skills || [];
+      const skill = skillsList.find(s => 
+        (s.name || s.displayName || s.skillId || '').toLowerCase() === (criteria.skillName || '').toLowerCase()
+      );
+      const skillProgressVal = skill ? (skill.progress || skill.level || 0) : 0;
+      // If the model stored level as 0-1, convert to 0-100 percentage
+      return skillProgressVal <= 1 && skillProgressVal > 0 ? skillProgressVal * 100 : skillProgressVal;
     
     default:
       return 0;

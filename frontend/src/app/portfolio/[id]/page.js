@@ -2,6 +2,8 @@ import React from 'react';
 import PortfolioClient from './PortfolioClient';
 import { getServerApiBaseUrl, getPublicAppUrl } from '../../../lib/runtimeConfig';
 
+export const dynamic = 'force-dynamic';
+
 // ========================================
 // SERVER-SIDE SEO HANDLER
 // ========================================
@@ -18,7 +20,6 @@ async function getPortfolioData(id) {
         const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout
 
         const response = await fetch(`${API_BASE}/portfolio/${id}`, {
-            next: { revalidate: 3600 },
             cache: 'no-store',
             signal: controller.signal
         });

@@ -9,13 +9,16 @@ import {
   Zap,
   Target,
   Award,
-  Calendar
+  Calendar,
+  Lock
 } from 'lucide-react';
 
 import { useTheme } from '../../context/ThemeContext';
 import { StatsSkeleton } from '../ui/Skeleton';
+import BlurCard from '../monetization/BlurCard';
+import { upgradeModalActions } from '../../hooks/useUpgradeModal';
 
-export default function StatsCards({ data }) {
+export default function StatsCards({ data, tier, entitlements }) {
   const { isMounted } = useTheme();
 
   // Calculate stats from data
@@ -25,7 +28,7 @@ export default function StatsCards({ data }) {
     return {
       velocity: {
         value: data.velocity || 0,
-        label: 'Knowledge Velocity',
+        label: 'Learning Speed',
         tooltip: 'How many skills you are learning per week',
         icon: Zap,
         gradient: 'from-blue-600 to-indigo-600',
@@ -54,7 +57,7 @@ export default function StatsCards({ data }) {
         gradient: 'from-emerald-500 to-teal-600',
         bgGradient: 'from-emerald-500/5 to-teal-500/5',
         textColor: 'text-teal-600 dark:text-teal-400',
-        description: 'Milestones Reached',
+        description: 'Achievements Won',
         trend: null,
       },
       hours: {
@@ -73,7 +76,7 @@ export default function StatsCards({ data }) {
 
   if (!isMounted || !stats) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
         {[1, 2, 3, 4].map((i) => (
           <StatsSkeleton key={i} />
         ))}
@@ -82,8 +85,13 @@ export default function StatsCards({ data }) {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      <StatCard stat={stats.velocity} />
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
+      <StatCard 
+        stat={stats.velocity} 
+        isVelocity 
+        tier={tier}
+        isLocked={!entitlements?.velocity}
+      />
       <StatCard stat={stats.streak} isStreak />
       <StatCard stat={stats.courses} />
       <StatCard stat={stats.hours} />
@@ -91,7 +99,7 @@ export default function StatsCards({ data }) {
   );
 }
 
-function StatCard({ stat, isStreak = false }) {
+function StatCard({ stat, isStreak = false, isVelocity = false, tier, isLocked = false }) {
   const Icon = stat.icon;
 
   return (
@@ -125,9 +133,24 @@ function StatCard({ stat, isStreak = false }) {
       </div>
 
       <div className="relative z-10 flex items-center justify-between mt-4">
-        <span className={`text-[10px] font-black uppercase tracking-widest ${stat.textColor} opacity-80`}>
-          {stat.description}
-        </span>
+        {isVelocity && isLocked ? (
+          <div 
+            onClick={() => upgradeModalActions.open({
+              featureName: 'Strategic Intelligence',
+              targetTier: 'pro',
+              upgradeHint: 'See what\'s hidden behind Strategic Intelligence — unlock with Pro.'
+            })}
+            className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 cursor-pointer hover:bg-indigo-500/20 transition-all w-full sm:w-fit group/lock overflow-hidden"
+            title="Reveal Strategic Intelligence"
+          >
+             <Lock size={12} strokeWidth={3} className="shrink-0 group-hover/lock:scale-110 transition-transform" />
+             <span className="text-[9px] font-black uppercase tracking-wider truncate">Unlock Intel</span>
+          </div>
+        ) : (
+          <span className={`text-[10px] font-black uppercase tracking-widest ${stat.textColor} opacity-80`}>
+            {stat.description}
+          </span>
+        )}
         {isStreak && stat.maxStreak > 0 && (
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-orange-500/10 text-orange-500 border border-orange-500/20">
             <Award size={12} strokeWidth={3} />

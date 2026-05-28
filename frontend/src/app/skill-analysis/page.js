@@ -6,6 +6,8 @@ import { api } from "../../services/api";
 import Surface from "../../components/ui/Surface";
 import Modal from "../../components/ui/Modal";
 import Breadcrumb from "../../components/ui/Breadcrumb";
+import BlurCard from "../../components/monetization/BlurCard";
+import { upgradeModalActions } from "../../hooks/useUpgradeModal";
 import {
   Brain,
   Target,
@@ -115,9 +117,10 @@ function SkillAnalysisContent() {
 
         if (age < CACHE_EXPIRY) {
           console.log("📦 Loading from cache:", role);
-          setDisplayData(parsed.data);
+          const analysis = cachedData || parsed; // Handle both old and new cache formats
+          setDisplayData(analysis);
           setAnalysisResult({
-            data: parsed.data,
+            data: analysis,
             provider: parsed.provider,
             model: parsed.model,
             success: true
@@ -135,13 +138,19 @@ function SkillAnalysisContent() {
       localStorage.removeItem(CACHE_KEY);
     }
   }, [isMounted]);
-
   // CACHE MANAGEMENT: Save new data to cache and update local state immediately
   useEffect(() => {
     if (!isMounted) return;
-    if (!data?.data || isLoading || isFetching) return;
+    if (!data || isLoading || isFetching) return;
 
     try {
+      const analysis = data.data || data;
+      // Defensive check: ensure we have actual analysis content
+      if (!analysis.skillGaps && !analysis.careerReadiness) {
+         console.warn("⚠️ Received response without expected analysis fields:", Object.keys(data));
+         if (!data.data) return; // If both are missing and no .data, it might be a partial job response
+      }
+
       console.log("%c🤖 AI Model Visibility Log (Skill Analysis)", "color: #4f46e5; font-weight: bold; font-size: 1.2em;");
       console.log(`%cProvider: %c${data.provider || 'default'}`, "font-weight: bold;", "color: #16a34a;");
       if (data.model) {
@@ -153,7 +162,7 @@ function SkillAnalysisContent() {
       }
 
       const cacheData = {
-        data: data.data,
+        data: analysis,
         provider: data.provider,
         model: data.model,
         timestamp: Date.now(),
@@ -163,9 +172,9 @@ function SkillAnalysisContent() {
       console.log("💾 Saved to localStorage:", lastSearchedRole);
 
       // CRITICAL: Update both displayData and analysisResult consistently
-      setDisplayData(data.data);
+      setDisplayData(analysis);
       setAnalysisResult({
-        data: data.data,
+        data: analysis,
         provider: data.provider,
         model: data.model,
         success: true
@@ -741,48 +750,61 @@ function SkillAnalysisContent() {
                     </h3>
                     <div className="grid gap-6">
                       {displayData.skillGaps.map((gap, i) => (
-                        <div
+                        <BlurCard
                           key={i}
-                          className="relative p-8 rounded-[2.5rem] bg-[var(--site-text)]/5 border border-[var(--card-border)] hover:border-[var(--accent-primary)]/40 transition-all group overflow-hidden cursor-pointer hover:-translate-y-2 hover:shadow-lg"
+                          isLocked={gap.skill?.includes('Upgrade to Pro')}
+                          message={displayData?.message}
+                          upgradeHint={displayData?.upgradeHint}
+                          className="rounded-[2.5rem]"
                         >
-                          <div className="absolute -right-20 -bottom-20 w-64 h-64 bg-[var(--accent-primary)]/5 rounded-full blur-[80px]" />
+                          <div
+                            className="relative p-8 rounded-[2.5rem] bg-[var(--site-text)]/5 border border-[var(--card-border)] hover:border-[var(--accent-primary)]/40 transition-all group overflow-hidden cursor-pointer hover:-translate-y-2 hover:shadow-lg"
+                          >
+                            <div className="absolute -right-20 -bottom-20 w-64 h-64 bg-[var(--accent-primary)]/5 rounded-full blur-[80px]" />
 
-                          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 relative z-10">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-4 mb-4">
-                                <span
-                                  className={`px-4 py-1.5 rounded-xl bg-gradient-to-r ${priorityColors[gap.priority] || priorityColors.Medium
-                                    } text-white text-[10px] font-black uppercase tracking-widest shadow-xl`}
-                                >
-                                  {gap.priority} PRIORITY
-                                </span>
-                                <span
-                                  className={`font-black text-[10px] uppercase tracking-widest ${demandColors[gap.marketDemand] || 'text-[var(--site-text-muted)]'
-                                    }`}
-                                >
-                                  {gap.marketDemand} MARKET DEMAND
-                                </span>
+                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 relative z-10">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-4 mb-4">
+                                  <span
+                                    className={`px-4 py-1.5 rounded-xl bg-gradient-to-r ${priorityColors[gap.priority] || priorityColors.Medium
+                                      } text-white text-[10px] font-black uppercase tracking-widest shadow-xl`}
+                                  >
+                                    {gap.priority} PRIORITY
+                                  </span>
+                                  <span
+                                    className={`font-black text-[10px] uppercase tracking-widest ${demandColors[gap.marketDemand] || 'text-[var(--site-text-muted)]'
+                                      }`}
+                                  >
+                                    {gap.marketDemand} MARKET DEMAND
+                                  </span>
+                                </div>
+                                <h4 className="text-2xl font-black text-[var(--site-text)] mb-3 group-hover:text-[var(--accent-primary)] transition-colors">
+                                  {gap.skill}
+                                </h4>
+                                <p className="text-lg text-[var(--site-text-muted)] font-bold opacity-80 leading-relaxed max-w-4xl">
+                                  {gap.reasoning}
+                                </p>
                               </div>
-                              <h4 className="text-2xl font-black text-[var(--site-text)] mb-3 group-hover:text-[var(--accent-primary)] transition-colors">
-                                {gap.skill}
-                              </h4>
-                              <p className="text-lg text-[var(--site-text-muted)] font-bold opacity-80 leading-relaxed max-w-4xl">
-                                {gap.reasoning}
-                              </p>
+                              <button
+                                onClick={() => {
+                                  if (gap.skill && gap.skill.includes('Upgrade to Pro')) {
+                                    upgradeModalActions.open({
+                                      featureName: 'Skill Intelligence',
+                                      targetTier: 'pro',
+                                      upgradeHint: 'Upgrade to Pro to unlock full skill gap insights and roadmap recommendations.'
+                                    });
+                                  } else {
+                                    router.push(`/courses?q=${encodeURIComponent(gap.skill)}`);
+                                  }
+                                }}
+                                className="lg:w-64 py-6 bg-[var(--site-text)] text-[var(--card-bg)] font-black rounded-3xl text-xs uppercase tracking-[0.2em] transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center gap-3 whitespace-nowrap btn-tactile group/btn cursor-pointer"
+                              >
+                                {gap.skill && gap.skill.includes('Upgrade to Pro') ? 'Upgrade to Pro' : 'Find Courses'}
+                                <ArrowRight size={18} className="transition-transform group-hover/btn:translate-x-1" />
+                              </button>
                             </div>
-                            <button
-                              onClick={() =>
-                              router.push(`/courses?q=${encodeURIComponent(
-                                gap.skill
-                              )}`)
-                              }
-                              className="lg:w-64 py-6 bg-[var(--site-text)] text-[var(--card-bg)] font-black rounded-3xl text-xs uppercase tracking-[0.2em] transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center gap-3 whitespace-nowrap btn-tactile group/btn cursor-pointer"
-                            >
-                              Find Courses
-                              <ArrowRight size={18} className="transition-transform group-hover/btn:translate-x-1" />
-                            </button>
                           </div>
-                        </div>
+                        </BlurCard>
                       ))}
                     </div>
                   </div>

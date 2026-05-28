@@ -7,6 +7,7 @@ import Footer from '../Footer';
 import { useAuth } from '../../context/AuthContext';
 import { AnimatePresence } from 'framer-motion';
 import PageTransition from '../ui/PageTransition';
+import { UpgradeModal } from '../monetization/UpgradeModal';
 
 export default function ClientShell({ children }) {
   const { user, loading } = useAuth();
@@ -32,7 +33,9 @@ export default function ClientShell({ children }) {
   const publicRoutes = ['/ai-intelligence', '/courses', '/ai-tools', '/youtube', '/skill-analysis', '/mission-home'];
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route)) || pathname === '/';
   
+  const isPortfolioRoute = pathname.startsWith('/portfolio/');
   const showSidebar = (!loading && !!user);
+  const showNavbar = showSidebar || !isPortfolioRoute;
 
 
   return (
@@ -57,7 +60,7 @@ export default function ClientShell({ children }) {
            '--sidebar-offset': showSidebar ? (isCollapsed ? '5rem' : '18rem') : '0px'
         }}
       >
-        <Navbar onMenuClick={() => setIsMobileOpen(true)} isSidebarActive={showSidebar} />
+        {showNavbar && <Navbar onMenuClick={() => setIsMobileOpen(true)} isSidebarActive={showSidebar} />}
         
         <main id="main-content" className="flex-1 w-full bg-[var(--site-bg)] relative z-0" role="main">
            <div className="max-w-[1800px] mx-auto min-h-full">
@@ -69,7 +72,8 @@ export default function ClientShell({ children }) {
            </div>
         </main>
 
-        {!showSidebar && <Footer />}
+        {!showSidebar && !isPortfolioRoute && <Footer />}
+        <UpgradeModal />
       </div>
     </div>
   );

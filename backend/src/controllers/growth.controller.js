@@ -7,7 +7,26 @@ class GrowthController {
   async getDailyActions(req, res) {
     try {
       const actions = await dailyActionEngine.getActions(req.userId);
-      res.json({ success: true, count: actions.length, data: actions });
+      
+      const response = {
+        success: true,
+        count: actions.length,
+        actions: actions
+      };
+
+      // Response Shaping
+      if (req.entitlements && req.entitlements.tier === 'free') {
+        const { shapeGatedResponse, getCuriosityHint } = await import('../utils/response.js');
+        const shaped = shapeGatedResponse(response, req.entitlements, {
+            featureArea: 'dailyActions',
+            keysToLock: ['estimatedImpact', 'link'],
+            upgradeHint: 'Get high-impact daily actions with Pro.',
+            lockedMessage: getCuriosityHint('dailyActions')
+        });
+        return res.json(shaped);
+      }
+
+      res.json(response);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -51,6 +70,39 @@ class GrowthController {
       });
       await log.save();
 
+      // [MOMENTUM SYNC] Update UserProgress activityLog for the heatmap atomically
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const updateResult = await UserProgress.updateOne(
+        { userId: req.userId, "activityLog.date": today },
+        { $inc: { "activityLog.$.count": 1 } }
+      );
+
+      if (updateResult.modifiedCount === 0) {
+        await UserProgress.updateOne(
+          { userId: req.userId },
+          { 
+            $setOnInsert: { userId: req.userId },
+            $push: { 
+              activityLog: { 
+                $each: [{ date: today, type: 'activity', count: 1 }],
+                $slice: -400 // Keep last 400 days for heatmap
+              } 
+            } 
+          },
+          { upsert: true }
+        );
+      }
+
+      // [STREAK SYNC] Update streaks via MomentumService
+      try {
+        const momentumService = (await import('../services/momentumService.js')).default;
+        await momentumService.updateStreak(req.userId);
+      } catch (err) {
+        console.error('Streak update failed but continuing:', err);
+      }
+
       // Track session counts for monetization timing
       if (action === 'app_launch' || action === 'dashboard_visit') {
         user.sessionCount = (user.sessionCount || 0) + 1;
@@ -59,6 +111,7 @@ class GrowthController {
 
       res.json({ success: true });
     } catch (error) {
+      console.error('Log activity error:', error);
       res.status(500).json({ error: error.message });
     }
   }

@@ -57,24 +57,23 @@ export default function PersonalizedWidget({ user, momentum, savedCount }) {
               </div>
             </div>
 
-            {/* STAT GRID - RE-ENGINEERED FOR BALANCE */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 xl:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-5 xl:gap-6">
               {[
                 { label: 'Streak', val: streak, icon: <Flame size={18} />, color: 'text-orange-500', bg: 'bg-orange-500/10' },
                 { label: 'Library', val: savedCount, icon: <BookMarked size={18} />, color: 'text-blue-500', bg: 'bg-blue-500/10' },
                 { label: 'Progress', val: velocity.toFixed(1), icon: <TrendingUp size={18} />, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
                 { label: 'Status', val: status.text, icon: status.emoji, color: status.color, bg: status.bg, isRaw: true }
               ].map((stat, i) => (
-                <div key={i} className="group/stat relative p-6 rounded-[2.5rem] bg-[var(--site-text)]/[0.02] border border-[var(--card-border)] hover:border-indigo-500/20 transition-all duration-500 hover:-translate-y-1.5 shadow-lg overflow-hidden backdrop-blur-md">
+                <div key={i} className="group/stat relative p-4 sm:p-6 rounded-[2rem] sm:rounded-[2.5rem] bg-[var(--site-text)]/[0.02] border border-[var(--card-border)] hover:border-indigo-500/20 transition-all duration-500 hover:-translate-y-1.5 shadow-lg overflow-hidden backdrop-blur-md">
                   <div className="flex flex-col gap-3 relative z-10">
-                    <div className={`w-11 h-11 rounded-1.5xl ${stat.bg} ${stat.color} flex items-center justify-center border border-white/5 group-hover/stat:scale-105 transition-all duration-700`}>
+                    <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-1.5xl ${stat.bg} ${stat.color} flex items-center justify-center border border-white/5 group-hover/stat:scale-105 transition-all duration-700`}>
                       {typeof stat.icon === 'string' ? <span className="text-xl">{stat.icon}</span> : stat.icon}
                     </div>
-                    <div>
-                      <div className={`text-xl md:text-2xl font-black text-[var(--site-text)] tracking-tighter leading-none mb-1.5 ${stat.isRaw ? 'text-xs md:text-sm uppercase tracking-widest' : ''}`}>
+                    <div className="min-w-0">
+                      <div className={`text-lg sm:text-xl md:text-2xl font-black text-[var(--site-text)] tracking-tighter leading-none mb-1.5 truncate ${stat.isRaw ? 'text-[10px] sm:text-xs md:text-sm uppercase tracking-wider' : ''}`} title={stat.val}>
                         {stat.val}
                       </div>
-                      <div className="text-[8px] font-black text-[var(--site-text-muted)] uppercase tracking-widest opacity-50">{stat.label}</div>
+                      <div className="text-[8px] font-black text-[var(--site-text-muted)] uppercase tracking-widest opacity-50 truncate">{stat.label}</div>
                     </div>
                   </div>
                 </div>
